@@ -33,6 +33,93 @@ const appSignatures = {
     processNames: ['Cursor']
   },
 
+  // Claude Code (Terminal-based AI coding tool)
+  claudecode: {
+    displayName: 'Claude Code',
+    icon: 'tools/claudecode.png',
+    patterns: [
+      /Claude Code/i,
+      /^claude$/i
+    ],
+    processNames: ['claude', 'claude-code']
+  },
+
+  // Cline (VS Code Extension AI Agent)
+  cline: {
+    displayName: 'Cline',
+    icon: 'tools/cline.png',
+    patterns: [
+      /Cline/i
+    ],
+    processNames: []
+  },
+
+  // Devin (AI Software Engineer)
+  devin: {
+    displayName: 'Devin',
+    icon: 'tools/devin.png',
+    patterns: [
+      /Devin/i
+    ],
+    processNames: [],
+    urlPatterns: ['preview.devin.ai', 'devin.ai']
+  },
+
+  // Magic Loop (AI Development Tool)
+  magicloop: {
+    displayName: 'Magic Loop',
+    icon: 'tools/magic_loop.png',
+    patterns: [
+      /Magic Loop/i
+    ],
+    processNames: [],
+    urlPatterns: ['magicloop.ai']
+  },
+
+  // MCP (Model Context Protocol)
+  mcp: {
+    displayName: 'MCP',
+    icon: 'tools/mcp.png',
+    patterns: [
+      /MCP/i,
+      /Model Context Protocol/i
+    ],
+    processNames: []
+  },
+
+  // Cluely (AI Assistant)
+  cluely: {
+    displayName: 'Cluely',
+    icon: 'tools/cluely.png',
+    patterns: [
+      /Cluely/i
+    ],
+    processNames: [],
+    urlPatterns: ['cluely.ai']
+  },
+
+  // Lovable (AI Web Development)
+  lovable: {
+    displayName: 'Lovable',
+    icon: 'tools/lovable.png',
+    patterns: [
+      /Lovable/i
+    ],
+    processNames: [],
+    urlPatterns: ['lovable.dev']
+  },
+
+  // Mistral (AI Language Model)
+  mistral: {
+    displayName: 'Mistral',
+    icon: 'tools/mistral.png',
+    patterns: [
+      /Mistral/i
+    ],
+    processNames: [],
+    urlPatterns: ['mistral.ai', 'chat.mistral.ai']
+  },
+
   // Additional AI Tools
   copilot: {
     displayName: 'GitHub Copilot',
@@ -110,6 +197,16 @@ const appSignatures = {
   },
   
   // Development Tools
+  github: {
+    displayName: 'GitHub Desktop',
+    icon: 'tools/github.png',
+    patterns: [
+      /GitHub Desktop/i,
+      /^GitHub Desktop$/i
+    ],
+    processNames: ['GitHub Desktop', 'GitHubDesktop']
+  },
+
   vscode: {
     displayName: 'Visual Studio Code',
     icon: '📝',
@@ -119,6 +216,71 @@ const appSignatures = {
       /^Code$/i
     ],
     processNames: ['Code', 'Visual Studio Code']
+  },
+
+  // Research & Productivity Tools
+  perplexity: {
+    displayName: 'Perplexity',
+    icon: 'tools/perplexity.png',
+    patterns: [
+      /Perplexity/i
+    ],
+    processNames: ['Perplexity'],
+    urlPatterns: ['perplexity.ai']
+  },
+
+  grok: {
+    displayName: 'Grok',
+    icon: 'tools/grok.png',
+    patterns: [
+      /Grok/i
+    ],
+    processNames: [],
+    urlPatterns: ['x.com/i/grok']
+  },
+
+  notion: {
+    displayName: 'Notion',
+    icon: 'tools/notion.png',
+    patterns: [
+      /Notion/i,
+      /^Notion$/i
+    ],
+    processNames: ['Notion'],
+    urlPatterns: ['notion.so', 'notion.com']
+  },
+
+  linear: {
+    displayName: 'Linear',
+    icon: 'tools/linear.png',
+    patterns: [
+      /Linear/i,
+      /^Linear$/i
+    ],
+    processNames: ['Linear'],
+    urlPatterns: ['linear.app']
+  },
+
+  figma: {
+    displayName: 'Figma',
+    icon: 'tools/figma.png',
+    patterns: [
+      /Figma/i,
+      /^Figma$/i
+    ],
+    processNames: ['Figma', 'figma_agent'],
+    urlPatterns: ['figma.com']
+  },
+
+  canva: {
+    displayName: 'Canva',
+    icon: 'tools/canva.png',
+    patterns: [
+      /Canva/i,
+      /^Canva$/i
+    ],
+    processNames: ['Canva'],
+    urlPatterns: ['canva.com']
   },
   
   // Browsers
@@ -163,6 +325,71 @@ const appSignatures = {
       /^Edge - /i
     ],
     processNames: ['Microsoft Edge']
+  },
+
+  // Additional Browsers
+  arc: {
+    displayName: 'Arc',
+    icon: 'tools/arc.png',
+    patterns: [
+      /Arc/i,
+      /^Arc$/i
+    ],
+    processNames: ['Arc']
+  },
+
+  brave: {
+    displayName: 'Brave Browser',
+    icon: 'tools/brave.png',
+    patterns: [
+      /Brave/i,
+      /Brave Browser/i
+    ],
+    processNames: ['Brave Browser', 'Brave']
+  },
+
+  // AI Image & Video Tools
+  midjourney: {
+    displayName: 'Midjourney',
+    icon: 'tools/midjourney.png',
+    patterns: [
+      /Midjourney/i
+    ],
+    processNames: [],
+    urlPatterns: ['midjourney.com']
+  },
+
+  stablediffusion: {
+    displayName: 'Stable Diffusion',
+    icon: 'tools/stablediffusion.png',
+    patterns: [
+      /Stable Diffusion/i,
+      /AUTOMATIC1111/i,
+      /ComfyUI/i
+    ],
+    processNames: ['stable-diffusion-webui', 'ComfyUI']
+  },
+
+  runway: {
+    displayName: 'Runway',
+    icon: 'tools/runway.png',
+    patterns: [
+      /Runway/i,
+      /RunwayML/i
+    ],
+    processNames: ['Runway', 'RunwayML'],
+    urlPatterns: ['runwayml.com', 'app.runwayml.com']
+  },
+
+  dalle: {
+    displayName: 'DALL-E',
+    icon: 'tools/dalle.png',
+    patterns: [
+      /DALL-E/i,
+      /DALLE/i
+    ],
+    processNames: [],
+    urlPatterns: ['labs.openai.com']
   },
   
   // Communication
@@ -230,7 +457,7 @@ function identifyApp(windowInfo) {
     if (appId === 'unknown') continue;
     
     // For browser identification, we need to ensure it's not a web app
-    const isBrowser = ['chrome', 'safari', 'firefox', 'edge'].includes(appId);
+    const isBrowser = ['chrome', 'safari', 'firefox', 'edge', 'arc', 'brave'].includes(appId);
     if (isBrowser && url) {
       // Skip browser identification if we have a URL (web app takes precedence)
       continue;
