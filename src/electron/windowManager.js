@@ -20,8 +20,7 @@ const isLiquidGlassSupported = () => {
         return false;
     }
     const majorVersion = parseInt(os.release().split('.')[0], 10);
-    // return majorVersion >= 25; // macOS 26+ (Darwin 25+)
-    return majorVersion >= 26; // See you soon!
+    return majorVersion >= 21; // macOS Monterey+ (Darwin 21+) for broader compatibility
 };
 let shouldUseLiquidGlass = isLiquidGlassSupported();
 if (shouldUseLiquidGlass) {
@@ -39,7 +38,7 @@ let currentDisplayId = null;
 
 let mouseEventsIgnored = false;
 let lastVisibleWindows = new Set(['header']);
-const HEADER_HEIGHT = 47;
+const HEADER_HEIGHT = 52;
 const DEFAULT_WINDOW_WIDTH = 353;
 
 let currentHeaderState = 'apikey';
@@ -296,13 +295,13 @@ function createWindows() {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { y: workAreaY, width: screenWidth } = primaryDisplay.workArea;
 
-    const initialX = Math.round((screenWidth - DEFAULT_WINDOW_WIDTH) / 2);
+    const initialX = Math.round((screenWidth - 390) / 2); // Center based on new width
     const initialY = workAreaY + 21;
     movementManager = new SmoothMovementManager(windowPool, getDisplayById, getCurrentDisplay, updateLayout);
     
     const header = new BrowserWindow({
-        width: DEFAULT_WINDOW_WIDTH,
-        height: HEADER_HEIGHT,
+        width: 390,  // Increased from DEFAULT_WINDOW_WIDTH to accommodate API key UI
+        height: 320, // Increased from HEADER_HEIGHT to show full API key form
         x: initialX,
         y: initialY,
         frame: false,
@@ -311,14 +310,15 @@ function createWindows() {
         alwaysOnTop: true,
         skipTaskbar: true,
         hiddenInMissionControl: true,
-        resizable: false,
+        resizable: true,  // Changed to true to allow dynamic resizing
         focusable: true,
         acceptFirstMouse: true,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
+            nodeIntegration: false,
+            contextIsolation: true,
             backgroundThrottling: false,
             webSecurity: false,
+            preload: path.join(__dirname, '../preload.js'),
         },
     });
     if (process.platform === 'darwin') {
@@ -604,7 +604,7 @@ function loadAndRegisterShortcuts(movementManager) {
 
 
     if (!header) {
-        return updateGlobalShortcuts(defaultKeybinds, undefined, sendToRenderer, movementManager);
+        return updateGlobalShortcuts(defaultKeybinds, null, sendToRenderer, movementManager);
     }
 
     header.webContents
@@ -765,6 +765,8 @@ function setupIpcHandlers(movementManager) {
 
         if (state === 'main') {
             createFeatureWindows(windowPool.get('header'));
+            // Re-register shortcuts after feature windows are created
+            loadAndRegisterShortcuts(movementManager);
         } else {         // 'apikey' | 'permission'
             destroyFeatureWindows();
         }
@@ -804,7 +806,16 @@ function setupIpcHandlers(movementManager) {
     });
 
     ipcMain.on('update-keybinds', (event, newKeybinds) => {
-        updateGlobalShortcuts(newKeybinds);
+        const sendToRenderer = (channel, ...args) => {
+            windowPool.forEach(win => {
+                try {
+                    if (win && !win.isDestroyed()) {
+                        win.webContents.send(channel, ...args);
+                    }
+                } catch (e) {}
+            });
+        };
+        updateGlobalShortcuts(newKeybinds, null, sendToRenderer, movementManager);
     });
 
     ipcMain.handle('open-login-page', () => {
@@ -816,7 +827,54 @@ function setupIpcHandlers(movementManager) {
 
     setupApiKeyIPC();
 
-    ipcMain.handle('resize-window', () => {});
+    ipcMain.handle('resize-window', (event, { isMainViewVisible, view }) => {
+        const senderWindow = BrowserWindow.fromWebContents(event.sender);
+        if (!senderWindow || senderWindow.isDestroyed()) {
+            return { success: false, error: 'Sender window not found' };
+        }
+
+        const wasResizable = senderWindow.isResizable();
+        if (!wasResizable) {
+            senderWindow.setResizable(true);
+        }
+
+        let width, height;
+        
+        // Determine size based on view and visibility state
+        if (view === 'listen') {
+            width = 400;
+            height = isMainViewVisible ? 500 : 200;
+        } else if (view === 'ask') {
+            width = 600;
+            height = isMainViewVisible ? 600 : 200;
+        } else if (view === 'settings') {
+            width = 240;
+            height = isMainViewVisible ? 400 : 200;
+        } else {
+            // Default/header view
+            width = DEFAULT_WINDOW_WIDTH;
+            height = HEADER_HEIGHT;
+        }
+
+        try {
+            const bounds = senderWindow.getBounds();
+            const newX = bounds.x + Math.round((bounds.width - width) / 2);
+            
+            senderWindow.setBounds({ x: newX, y: bounds.y, width, height });
+            
+            // Update layout after resize
+            updateLayout();
+            
+            return { success: true, width, height };
+        } catch (error) {
+            console.error('[WindowManager] Error resizing window:', error);
+            return { success: false, error: error.message };
+        } finally {
+            if (!wasResizable) {
+                senderWindow.setResizable(false);
+            }
+        }
+    });
 
     ipcMain.handle('resize-for-view', () => {});
 
@@ -1278,7 +1336,7 @@ function getDefaultKeybinds() {
     };
 }
 
-function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, movementManager) {
+function updateGlobalShortcuts(keybinds, headerWindow, sendToRenderer, movementManager) {
     // console.log('Updating global shortcuts with:', keybinds);
 
     // Unregister all existing shortcuts
@@ -1363,15 +1421,19 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, movementMan
     if (keybinds.toggleClickThrough) {
         try {
             globalShortcut.register(keybinds.toggleClickThrough, () => {
+                if (!headerWindow || headerWindow.isDestroyed()) {
+                    console.warn('toggleClickThrough: headerWindow not available');
+                    return;
+                }
                 mouseEventsIgnored = !mouseEventsIgnored;
                 if (mouseEventsIgnored) {
-                    mainWindow.setIgnoreMouseEvents(true, { forward: true });
+                    headerWindow.setIgnoreMouseEvents(true, { forward: true });
                     console.log('Mouse events ignored');
                 } else {
-                    mainWindow.setIgnoreMouseEvents(false);
+                    headerWindow.setIgnoreMouseEvents(false);
                     console.log('Mouse events enabled');
                 }
-                mainWindow.webContents.send('click-through-toggled', mouseEventsIgnored);
+                headerWindow.webContents.send('click-through-toggled', mouseEventsIgnored);
             });
             // console.log(`Registered toggleClickThrough: ${keybinds.toggleClickThrough}`);
         } catch (error) {
@@ -1418,8 +1480,12 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, movementMan
     if (keybinds.manualScreenshot) {
         try {
             globalShortcut.register(keybinds.manualScreenshot, () => {
+                if (!headerWindow || headerWindow.isDestroyed()) {
+                    console.warn('manualScreenshot: headerWindow not available');
+                    return;
+                }
                 console.log('Manual screenshot shortcut triggered');
-                mainWindow.webContents.executeJavaScript(`
+                headerWindow.webContents.executeJavaScript(`
                     if (window.captureManualScreenshot) {
                         window.captureManualScreenshot();
                     } else {

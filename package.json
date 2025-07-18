@@ -10,14 +10,16 @@
         "package": "npm run build:renderer && electron-forge package",
         "make": "npm run build:renderer && electron-forge make",
         "build": "npm run build:all && electron-builder --config electron-builder.yml --publish never",
-        "build:win": "npm run build:all && electron-builder --win --x64 --publish never", 
+        "build:win": "npm run build:all && electron-builder --win --x64 --publish never",
         "publish": "npm run build:all && electron-builder --config electron-builder.yml --publish always",
         "lint": "eslint --ext .ts,.tsx,.js .",
         "postinstall": "electron-builder install-app-deps",
         "build:renderer": "node build.js",
         "build:web": "cd pickleglass_web && npm run build && cd ..",
         "build:all": "npm run build:renderer && npm run build:web",
-        "watch:renderer": "node build.js --watch"
+        "watch:renderer": "node build.js --watch",
+        "test": "vitest",
+        "test:ui": "vitest --ui"
     },
     "keywords": [
         "glass",
@@ -35,11 +37,12 @@
         "@anthropic-ai/sdk": "^0.56.0",
         "@google/genai": "^1.8.0",
         "@google/generative-ai": "^0.24.1",
+        "@supabase/supabase-js": "^2.51.0",
+        "active-win": "^8.2.1",
         "axios": "^1.10.0",
         "better-sqlite3": "^9.4.3",
         "cors": "^2.8.5",
         "dotenv": "^17.0.0",
-
         "electron-squirrel-startup": "^1.0.1",
         "electron-store": "^8.2.0",
         "electron-updater": "^6.6.2",
@@ -66,10 +69,14 @@
         "@electron-forge/plugin-fuses": "^7.8.1",
         "@electron/fuses": "^1.8.0",
         "@electron/notarize": "^2.5.0",
+        "@vitest/ui": "^3.2.4",
         "electron": "^30.5.1",
         "electron-builder": "^26.0.12",
         "electron-reloader": "^1.2.3",
-        "esbuild": "^0.25.5"
+        "esbuild": "^0.25.5",
+        "eslint": "^9.31.0",
+        "jsdom": "^26.1.0",
+        "vitest": "^3.2.4"
     },
     "optionalDependencies": {
         "electron-liquid-glass": "^1.0.1"

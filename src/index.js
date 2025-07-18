@@ -1,710 +1,322 @@
-// try {
-//     const reloader = require('electron-reloader');
-//     reloader(module, {
-//     });
-// } catch (err) {
-// }
+console.log('[Codexel] Starting application initialization...');
 
 require('dotenv').config();
 
 if (require('electron-squirrel-startup')) {
+    console.log('[Codexel] Electron squirrel startup detected, exiting...');
     process.exit(0);
 }
 
-const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
-const { createWindows } = require('./electron/windowManager.js');
-const ListenService = require('./features/listen/listenService');
-const { initializeFirebase } = require('./common/services/firebaseClient');
-const databaseInitializer = require('./common/services/databaseInitializer');
-const authService = require('./common/services/authService');
+console.log('[Codexel] Loading dependencies...');
+
+const { app, BrowserWindow, shell, ipcMain, screen, path: electronPath } = require('electron');
 const path = require('node:path');
-const express = require('express');
-const fetch = require('node-fetch');
-const { autoUpdater } = require('electron-updater');
-const { EventEmitter } = require('events');
-const askService = require('./features/ask/askService');
-const settingsService = require('./features/settings/settingsService');
-const sessionRepository = require('./common/repositories/session');
-const ModelStateService = require('./common/services/modelStateService');
+const os = require('os');
 
-const eventBridge = new EventEmitter();
-let WEB_PORT = 3000;
+console.log('[Codexel] Loading focusDetector...');
+const focusDetector = require('./main/focusDetector');
 
-const listenService = new ListenService();
-// Make listenService globally accessible so other modules (e.g., windowManager, askService) can reuse the same instance
-global.listenService = listenService;
+console.log('[Codexel] Loading AssessmentWindowManager...');
+const AssessmentWindowManager = require('./electron/assessmentWindowManager');
 
-//////// after_modelStateService ////////
-const modelStateService = new ModelStateService(authService);
-global.modelStateService = modelStateService;
-//////// after_modelStateService ////////
+// Liquid Glass Detection and Initialization
+console.log('[Codexel] Initializing liquid glass support...');
 
-// Native deep link handling - cross-platform compatible
-let pendingDeepLinkUrl = null;
+let liquidGlass;
+const isLiquidGlassSupported = () => {
+    if (process.platform !== 'darwin') {
+        console.log('[Codexel] Not on macOS, liquid glass not supported');
+        return false;
+    }
+    const majorVersion = parseInt(os.release().split('.')[0], 10);
+    console.log(`[Codexel] macOS version: ${majorVersion}, liquid glass requires 26+`);
+    return majorVersion >= 26; // macOS Tahoe (Darwin 26+) requirement
+};
 
-function setupProtocolHandling() {
-    // Protocol registration - must be done before app is ready
+let shouldUseLiquidGlass = isLiquidGlassSupported();
+if (shouldUseLiquidGlass) {
     try {
-        if (!app.isDefaultProtocolClient('pickleglass')) {
-            const success = app.setAsDefaultProtocolClient('pickleglass');
-            if (success) {
-                console.log('[Protocol] Successfully set as default protocol client for pickleglass://');
-            } else {
-                console.warn('[Protocol] Failed to set as default protocol client - this may affect deep linking');
-            }
-        } else {
-            console.log('[Protocol] Already registered as default protocol client for pickleglass://');
-        }
-    } catch (error) {
-        console.error('[Protocol] Error during protocol registration:', error);
+        liquidGlass = require('electron-liquid-glass');
+        console.log('[Codexel] Liquid Glass support detected and loaded');
+    } catch (e) {
+        console.warn('[Codexel] Could not load electron-liquid-glass. Using fallback vibrancy.');
+        shouldUseLiquidGlass = false;
     }
-
-    // Handle protocol URLs on Windows/Linux
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-        console.log('[Protocol] Second instance command line:', commandLine);
-        
-        focusMainWindow();
-        
-        let protocolUrl = null;
-        
-        // Search through all command line arguments for a valid protocol URL
-        for (const arg of commandLine) {
-            if (arg && typeof arg === 'string' && arg.startsWith('pickleglass://')) {
-                // Clean up the URL by removing problematic characters
-                const cleanUrl = arg.replace(/[\\₩]/g, '');
-                
-                // Additional validation for Windows
-                if (process.platform === 'win32') {
-                    // On Windows, ensure the URL doesn't contain file path indicators
-                    if (!cleanUrl.includes(':') || cleanUrl.indexOf('://') === cleanUrl.lastIndexOf(':')) {
-                        protocolUrl = cleanUrl;
-                        break;
-                    }
-                } else {
-                    protocolUrl = cleanUrl;
-                    break;
-                }
-            }
-        }
-        
-        if (protocolUrl) {
-            console.log('[Protocol] Valid URL found from second instance:', protocolUrl);
-            handleCustomUrl(protocolUrl);
-        } else {
-            console.log('[Protocol] No valid protocol URL found in command line arguments');
-            console.log('[Protocol] Command line args:', commandLine);
-        }
-    });
-
-    // Handle protocol URLs on macOS
-    app.on('open-url', (event, url) => {
-        event.preventDefault();
-        console.log('[Protocol] Received URL via open-url:', url);
-        
-        if (!url || !url.startsWith('pickleglass://')) {
-            console.warn('[Protocol] Invalid URL format:', url);
-            return;
-        }
-
-        if (app.isReady()) {
-            handleCustomUrl(url);
-        } else {
-            pendingDeepLinkUrl = url;
-            console.log('[Protocol] App not ready, storing URL for later');
-        }
-    });
+} else {
+    console.log('[Codexel] Liquid Glass not supported, using fallback vibrancy');
 }
 
-function focusMainWindow() {
-    const { windowPool } = require('./electron/windowManager');
-    if (windowPool) {
-        const header = windowPool.get('header');
-        if (header && !header.isDestroyed()) {
-            if (header.isMinimized()) header.restore();
-            header.focus();
-            return true;
-        }
+// Initialize Assessment Window Manager
+console.log('[Codexel] Creating AssessmentWindowManager...');
+const windowManager = new AssessmentWindowManager(liquidGlass, shouldUseLiquidGlass);
+global.assessmentWindowManager = windowManager; // Make available globally for focusDetector
+console.log('[Codexel] AssessmentWindowManager created successfully');
+
+// Window references for backward compatibility
+let consentWindow = null;
+let readyWindow = null;
+let headerWindow = null;
+let completionWindow = null;
+let currentAssessmentState = 'AWAITING_CONSENT';
+
+// Helper function to get current active window
+function getCurrentActiveWindow() {
+    switch (currentAssessmentState) {
+        case 'AWAITING_CONSENT':
+            return consentWindow;
+        case 'READY_TO_START':
+            return readyWindow;
+        case 'ASSESSMENT_IN_PROGRESS':
+            return headerWindow;
+        case 'ASSESSMENT_COMPLETE':
+            return completionWindow;
+        default:
+            return null;
     }
-    
-    // Fallback: focus any available window
-    const windows = BrowserWindow.getAllWindows();
-    if (windows.length > 0) {
-        const mainWindow = windows[0];
-        if (!mainWindow.isDestroyed()) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.focus();
-            return true;
-        }
-    }
-    
-    return false;
 }
 
-if (process.platform === 'win32') {
-    for (const arg of process.argv) {
-        if (arg && typeof arg === 'string' && arg.startsWith('pickleglass://')) {
-            // Clean up the URL by removing problematic characters (korean characters issue...)
-            const cleanUrl = arg.replace(/[\\₩]/g, '');
-            
-            if (!cleanUrl.includes(':') || cleanUrl.indexOf('://') === cleanUrl.lastIndexOf(':')) {
-                console.log('[Protocol] Found protocol URL in initial arguments:', cleanUrl);
-                pendingDeepLinkUrl = cleanUrl;
-                break;
-            }
-        }
-    }
-    
-    console.log('[Protocol] Initial process.argv:', process.argv);
-}
-
+// Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
     process.exit(0);
 }
 
-// setup protocol after single instance lock
-setupProtocolHandling();
-
-app.whenReady().then(async () => {
-
-    // Setup native loopback audio capture for Windows
-    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-        desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
-            // Grant access to the first screen found with loopback audio
-            callback({ video: sources[0], audio: 'loopback' });
-        }).catch((error) => {
-            console.error('Failed to get desktop capturer sources:', error);
-            callback({});
-        });
-    });
-
-    // Initialize core services
-    initializeFirebase();
-    
-    try {
-        await databaseInitializer.initialize();
-        console.log('>>> [index.js] Database initialized successfully');
-        
-        // Clean up zombie sessions from previous runs first
-        sessionRepository.endAllActiveSessions();
-
-        authService.initialize();
-        //////// after_modelStateService ////////
-        modelStateService.initialize();
-        //////// after_modelStateService ////////
-        listenService.setupIpcHandlers();
-        askService.initialize();
-        settingsService.initialize();
-        setupGeneralIpcHandlers();
-
-        // Start web server and create windows ONLY after all initializations are successful
-        WEB_PORT = await startWebStack();
-        console.log('Web front-end listening on', WEB_PORT);
-        
-        createWindows();
-
-    } catch (err) {
-        console.error('>>> [index.js] Database initialization failed - some features may not work', err);
-        // Optionally, show an error dialog to the user
-        dialog.showErrorBox(
-            'Application Error',
-            'A critical error occurred during startup. Some features might be disabled. Please restart the application.'
-        );
-    }
-
-    initAutoUpdater();
-
-    // Process any pending deep link after everything is initialized
-    if (pendingDeepLinkUrl) {
-        console.log('[Protocol] Processing pending URL:', pendingDeepLinkUrl);
-        handleCustomUrl(pendingDeepLinkUrl);
-        pendingDeepLinkUrl = null;
+// Focus main window if second instance is opened
+app.on('second-instance', () => {
+    // Focus the current active window based on assessment state
+    const currentWindow = getCurrentActiveWindow();
+    if (currentWindow) {
+        if (currentWindow.isMinimized()) currentWindow.restore();
+        currentWindow.focus();
     }
 });
 
+app.whenReady().then(async () => {
+    console.log('[Codexel] App ready, starting multi-window assessment application');
+    
+    try {
+        // Setup IPC handlers first
+        console.log('[Codexel] Setting up IPC handlers...');
+        setupAssessmentIPC();
+        
+        // Create the consent window as the first window
+        console.log('[Codexel] Creating consent window...');
+        createConsentWindow();
+        
+        console.log('[Codexel] Assessment application ready with multi-window support');
+    } catch (error) {
+        console.error('[Codexel] Error during app initialization:', error);
+        throw error;
+    }
+}).catch(error => {
+    console.error('[Codexel] Fatal error during app startup:', error);
+    process.exit(1);
+});
+
 app.on('window-all-closed', () => {
-    listenService.stopMacOSAudioCapture();
     if (process.platform !== 'darwin') {
         app.quit();
     }
 });
 
 app.on('before-quit', async () => {
-    console.log('[Shutdown] App is about to quit.');
-    listenService.stopMacOSAudioCapture();
-    await sessionRepository.endAllActiveSessions();
-    databaseInitializer.close();
+    console.log('[Codexel] App is about to quit.');
+    
+    // Stop telemetry services
+    try {
+        focusDetector.stop();
+        console.log('[Telemetry] Focus detector stopped');
+    } catch (error) {
+        console.warn('[Telemetry] Error stopping focus detector:', error.message);
+    }
+    
+    // Close all assessment windows using window manager
+    windowManager.closeAllWindows();
 });
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindows();
+        // Recreate appropriate window based on current state
+        switch (currentAssessmentState) {
+            case 'AWAITING_CONSENT':
+                createConsentWindow();
+                break;
+            case 'READY_TO_START':
+                createReadyWindow();
+                break;
+            case 'ASSESSMENT_IN_PROGRESS':
+                createHeaderWindow();
+                break;
+            case 'ASSESSMENT_COMPLETE':
+                createCompletionWindow();
+                break;
+        }
     }
 });
 
-function setupGeneralIpcHandlers() {
-    const userRepository = require('./common/repositories/user');
-    const presetRepository = require('./common/repositories/preset');
+/**
+ * Create the consent window (full screen overlay)
+ */
+function createConsentWindow() {
+    consentWindow = windowManager.createConsentWindow();
 
-    ipcMain.handle('save-api-key', (event, apiKey) => {
-        try {
-            userRepository.saveApiKey(apiKey, authService.getCurrentUserId());
-            BrowserWindow.getAllWindows().forEach(win => {
-                win.webContents.send('api-key-updated');
-            });
-            return { success: true };
-        } catch (error) {
-            console.error('IPC: Failed to save API key:', error);
-            return { success: false, error: error.message };
-        }
-    });
+    // Open DevTools in development
+    if (!app.isPackaged) {
+        consentWindow.webContents.openDevTools({ mode: 'detach' });
+    }
 
-    ipcMain.handle('get-user-presets', () => {
-        return presetRepository.getPresets(authService.getCurrentUserId());
-    });
-
-    ipcMain.handle('get-preset-templates', () => {
-        return presetRepository.getPresetTemplates();
-    });
-
-    ipcMain.handle('start-firebase-auth', async () => {
-        try {
-            const authUrl = `http://localhost:${WEB_PORT}/login?mode=electron`;
-            console.log(`[Auth] Opening Firebase auth URL in browser: ${authUrl}`);
-            await shell.openExternal(authUrl);
-            return { success: true };
-        } catch (error) {
-            console.error('[Auth] Failed to open Firebase auth URL:', error);
-            return { success: false, error: error.message };
-        }
-    });
-
-    ipcMain.handle('get-web-url', () => {
-        return process.env.pickleglass_WEB_URL || 'http://localhost:3000';
-    });
-
-    ipcMain.handle('get-current-user', () => {
-        return authService.getCurrentUser();
-    });
-
-    // --- Web UI Data Handlers (New) ---
-    setupWebDataHandlers();
+    console.log('[Codexel] Consent window created');
 }
 
-function setupWebDataHandlers() {
-    const sessionRepository = require('./common/repositories/session');
-    const sttRepository = require('./features/listen/stt/repositories');
-    const summaryRepository = require('./features/listen/summary/repositories');
-    const askRepository = require('./features/ask/repositories');
-    const userRepository = require('./common/repositories/user');
-    const presetRepository = require('./common/repositories/preset');
+/**
+ * Create the ready window (centered modal)
+ */
+function createReadyWindow() {
+    readyWindow = windowManager.createReadyWindow();
 
-    const handleRequest = (channel, responseChannel, payload) => {
-        let result;
-        const currentUserId = authService.getCurrentUserId();
-        try {
-            switch (channel) {
-                // SESSION
-                case 'get-sessions':
-                    result = sessionRepository.getAllByUserId(currentUserId);
-                    break;
-                case 'get-session-details':
-                    const session = sessionRepository.getById(payload);
-                    if (!session) {
-                        result = null;
-                        break;
-                    }
-                    const transcripts = sttRepository.getAllTranscriptsBySessionId(payload);
-                    const ai_messages = askRepository.getAllAiMessagesBySessionId(payload);
-                    const summary = summaryRepository.getSummaryBySessionId(payload);
-                    result = { session, transcripts, ai_messages, summary };
-                    break;
-                case 'delete-session':
-                    result = sessionRepository.deleteWithRelatedData(payload);
-                    break;
-                case 'create-session':
-                    const id = sessionRepository.create(currentUserId, 'ask');
-                    if (payload.title) {
-                        sessionRepository.updateTitle(id, payload.title);
-                    }
-                    result = { id };
-                    break;
-                
-                // USER
-                case 'get-user-profile':
-                    result = userRepository.getById(currentUserId);
-                    break;
-                case 'update-user-profile':
-                    result = userRepository.update({ uid: currentUserId, ...payload });
-                    break;
-                case 'find-or-create-user':
-                    result = userRepository.findOrCreate(payload);
-                    break;
-                case 'save-api-key':
-                    result = userRepository.saveApiKey(payload, currentUserId);
-                    break;
-                case 'check-api-key-status':
-                    const user = userRepository.getById(currentUserId);
-                    result = { hasApiKey: !!user?.api_key && user.api_key.length > 0 };
-                    break;
-                case 'delete-account':
-                    result = userRepository.deleteById(currentUserId);
-                    break;
+    // Open DevTools in development
+    if (!app.isPackaged) {
+        readyWindow.webContents.openDevTools({ mode: 'detach' });
+    }
 
-                // PRESET
-                case 'get-presets':
-                    result = presetRepository.getPresets(currentUserId);
-                    break;
-                case 'create-preset':
-                    result = presetRepository.create({ ...payload, uid: currentUserId });
-                    settingsService.notifyPresetUpdate('created', result.id, payload.title);
-                    break;
-                case 'update-preset':
-                    result = presetRepository.update(payload.id, payload.data, currentUserId);
-                    settingsService.notifyPresetUpdate('updated', payload.id, payload.data.title);
-                    break;
-                case 'delete-preset':
-                    result = presetRepository.delete(payload, currentUserId);
-                    settingsService.notifyPresetUpdate('deleted', payload);
-                    break;
-                
-                // BATCH
-                case 'get-batch-data':
-                    const includes = payload ? payload.split(',').map(item => item.trim()) : ['profile', 'presets', 'sessions'];
-                    const batchResult = {};
-            
-                    if (includes.includes('profile')) {
-                        batchResult.profile = userRepository.getById(currentUserId);
-                    }
-                    if (includes.includes('presets')) {
-                        batchResult.presets = presetRepository.getPresets(currentUserId);
-                    }
-                    if (includes.includes('sessions')) {
-                        batchResult.sessions = sessionRepository.getAllByUserId(currentUserId);
-                    }
-                    result = batchResult;
-                    break;
-
-                default:
-                    throw new Error(`Unknown web data channel: ${channel}`);
-            }
-            eventBridge.emit(responseChannel, { success: true, data: result });
-        } catch (error) {
-            console.error(`Error handling web data request for ${channel}:`, error);
-            eventBridge.emit(responseChannel, { success: false, error: error.message });
-        }
-    };
-    
-    eventBridge.on('web-data-request', handleRequest);
+    console.log('[Codexel] Ready window created');
 }
 
-async function handleCustomUrl(url) {
+/**
+ * Create the header window (collapsed assessment tracker)
+ */
+function createHeaderWindow() {
+    headerWindow = windowManager.createHeaderWindow();
+
+    // Open DevTools in development
+    if (!app.isPackaged) {
+        headerWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+
+    // Start telemetry services for assessment tracking
+    startAssessmentTelemetry();
+
+    console.log('[Codexel] Header window created');
+}
+
+/**
+ * Create the completion window (results display)
+ */
+function createCompletionWindow() {
+    completionWindow = windowManager.createCompletionWindow();
+
+    // Open DevTools in development
+    if (!app.isPackaged) {
+        completionWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+
+    console.log('[Codexel] Completion window created');
+}
+
+/**
+ * Start assessment telemetry services
+ */
+async function startAssessmentTelemetry() {
     try {
-        console.log('[Custom URL] Processing URL:', url);
-        
-        // Validate and clean URL
-        if (!url || typeof url !== 'string' || !url.startsWith('pickleglass://')) {
-            console.error('[Custom URL] Invalid URL format:', url);
-            return;
-        }
-        
-        // Clean up URL by removing problematic characters
-        const cleanUrl = url.replace(/[\\₩]/g, '');
-        
-        // Additional validation
-        if (cleanUrl !== url) {
-            console.log('[Custom URL] Cleaned URL from:', url, 'to:', cleanUrl);
-            url = cleanUrl;
-        }
-        
-        const urlObj = new URL(url);
-        const action = urlObj.hostname;
-        const params = Object.fromEntries(urlObj.searchParams);
-        
-        console.log('[Custom URL] Action:', action, 'Params:', params);
-
-        switch (action) {
-            case 'login':
-            case 'auth-success':
-                await handleFirebaseAuthCallback(params);
-                break;
-            case 'personalize':
-                handlePersonalizeFromUrl(params);
-                break;
-            default:
-                const { windowPool } = require('./electron/windowManager');
-                const header = windowPool.get('header');
-                if (header) {
-                    if (header.isMinimized()) header.restore();
-                    header.focus();
-                    
-                    const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
-                    console.log(`[Custom URL] Navigating webview to: ${targetUrl}`);
-                    header.webContents.loadURL(targetUrl);
-                }
-        }
-
+        await focusDetector.start(headerWindow, 'assessment_session');
+        console.log('[Telemetry] Focus detector started successfully');
     } catch (error) {
-        console.error('[Custom URL] Error parsing URL:', error);
+        console.warn('[Telemetry] Failed to start focus detector:', error.message);
     }
 }
 
-async function handleFirebaseAuthCallback(params) {
-    const userRepository = require('./common/repositories/user');
-    const { token: idToken } = params;
+/**
+ * Transition between assessment windows
+ */
+function transitionToWindow(fromWindow, toWindowCreator) {
+    windowManager.transitionToWindow(fromWindow, toWindowCreator);
+}
 
-    if (!idToken) {
-        console.error('[Auth] Firebase auth callback is missing ID token.');
-        // No need to send IPC, the UI won't transition without a successful auth state change.
-        return;
-    }
-
-    console.log('[Auth] Received ID token from deep link, exchanging for custom token...');
-
-    try {
-        const functionUrl = 'https://us-west1-pickle-3651a.cloudfunctions.net/pickleGlassAuthCallback';
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: idToken })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || 'Failed to exchange token.');
-        }
-
-        const { customToken, user } = data;
-        console.log('[Auth] Successfully received custom token for user:', user.uid);
-
-        const firebaseUser = {
-            uid: user.uid,
-            email: user.email || 'no-email@example.com',
-            displayName: user.name || 'User',
-            photoURL: user.picture
-        };
-
-        // 1. Sync user data to local DB
-        userRepository.findOrCreate(firebaseUser);
-        console.log('[Auth] User data synced with local DB.');
-
-        // 2. Sign in using the authService in the main process
-        await authService.signInWithCustomToken(customToken);
-        console.log('[Auth] Main process sign-in initiated. Waiting for onAuthStateChanged...');
-
-        // 3. Focus the app window
-        const { windowPool } = require('./electron/windowManager');
-        const header = windowPool.get('header');
-        if (header) {
-            if (header.isMinimized()) header.restore();
-            header.focus();
-        } else {
-            console.error('[Auth] Header window not found after auth callback.');
-        }
+/**
+ * Setup basic IPC handlers for assessment functionality
+ */
+function setupAssessmentIPC() {
+    // Get app signatures for the MainHeader focused app indicator
+    ipcMain.handle('get-app-signatures', () => {
+        const { appSignatures } = require('./config/appSignatures');
         
-    } catch (error) {
-        console.error('[Auth] Error during custom token exchange or sign-in:', error);
-        // The UI will not change, and the user can try again.
-        // Optionally, send a generic error event to the renderer.
-        const { windowPool } = require('./electron/windowManager');
-        const header = windowPool.get('header');
-        if (header) {
-            header.webContents.send('auth-failed', { message: error.message });
-        }
-    }
-}
-
-function handlePersonalizeFromUrl(params) {
-    console.log('[Custom URL] Personalize params:', params);
-    
-    const { windowPool } = require('./electron/windowManager');
-    const header = windowPool.get('header');
-    
-    if (header) {
-        if (header.isMinimized()) header.restore();
-        header.focus();
-        
-        const personalizeUrl = `http://localhost:${WEB_PORT}/settings`;
-        console.log(`[Custom URL] Navigating to personalize page: ${personalizeUrl}`);
-        header.webContents.loadURL(personalizeUrl);
-        
-        BrowserWindow.getAllWindows().forEach(win => {
-            win.webContents.send('enter-personalize-mode', {
-                message: 'Personalization mode activated',
-                params: params
-            });
-        });
-    } else {
-        console.error('[Custom URL] Header window not found for personalize');
-    }
-}
-
-
-async function startWebStack() {
-  console.log('NODE_ENV =', process.env.NODE_ENV); 
-  const isDev = !app.isPackaged;
-
-  const getAvailablePort = () => {
-    return new Promise((resolve, reject) => {
-      const server = require('net').createServer();
-      server.listen(0, (err) => {
-        if (err) reject(err);
-        const port = server.address().port;
-        server.close(() => resolve(port));
-      });
-    });
-  };
-
-  const apiPort = await getAvailablePort();
-  const frontendPort = await getAvailablePort();
-
-  console.log(`🔧 Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
-
-  process.env.pickleglass_API_PORT = apiPort.toString();
-  process.env.pickleglass_API_URL = `http://localhost:${apiPort}`;
-  process.env.pickleglass_WEB_PORT = frontendPort.toString();
-  process.env.pickleglass_WEB_URL = `http://localhost:${frontendPort}`;
-
-  console.log(`🌍 Environment variables set:`, {
-    pickleglass_API_URL: process.env.pickleglass_API_URL,
-    pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
-  });
-
-  const createBackendApp = require('../pickleglass_web/backend_node');
-  const nodeApi = createBackendApp(eventBridge);
-
-  const staticDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'out')
-    : path.join(__dirname, '..', 'pickleglass_web', 'out');
-
-  const fs = require('fs');
-
-  if (!fs.existsSync(staticDir)) {
-    console.error(`============================================================`);
-    console.error(`[ERROR] Frontend build directory not found!`);
-    console.error(`Path: ${staticDir}`);
-    console.error(`Please run 'npm run build' inside the 'pickleglass_web' directory first.`);
-    console.error(`============================================================`);
-    app.quit();
-    return;
-  }
-
-  const runtimeConfig = {
-    API_URL: `http://localhost:${apiPort}`,
-    WEB_URL: `http://localhost:${frontendPort}`,
-    timestamp: Date.now()
-  };
-  
-  // 쓰기 가능한 임시 폴더에 런타임 설정 파일 생성
-  const tempDir = app.getPath('temp');
-  const configPath = path.join(tempDir, 'runtime-config.json');
-  fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
-  console.log(`📝 Runtime config created in temp location: ${configPath}`);
-
-  const frontSrv = express();
-  
-  // 프론트엔드에서 /runtime-config.json을 요청하면 임시 폴더의 파일을 제공
-  frontSrv.get('/runtime-config.json', (req, res) => {
-    res.sendFile(configPath);
-  });
-
-  frontSrv.use((req, res, next) => {
-    if (req.path.indexOf('.') === -1 && req.path !== '/') {
-      const htmlPath = path.join(staticDir, req.path + '.html');
-      if (fs.existsSync(htmlPath)) {
-        return res.sendFile(htmlPath);
-      }
-    }
-    next();
-  });
-  
-  frontSrv.use(express.static(staticDir));
-  
-  const frontendServer = await new Promise((resolve, reject) => {
-    const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));
-    server.on('error', reject);
-    app.once('before-quit', () => server.close());
-  });
-
-  console.log(`✅ Frontend server started on http://localhost:${frontendPort}`);
-
-  const apiSrv = express();
-  apiSrv.use(nodeApi);
-
-  const apiServer = await new Promise((resolve, reject) => {
-    const server = apiSrv.listen(apiPort, '127.0.0.1', () => resolve(server));
-    server.on('error', reject);
-    app.once('before-quit', () => server.close());
-  });
-
-  console.log(`✅ API server started on http://localhost:${apiPort}`);
-
-  console.log(`🚀 All services ready:`);
-  console.log(`   Frontend: http://localhost:${frontendPort}`);
-  console.log(`   API:      http://localhost:${apiPort}`);
-
-  return frontendPort;
-}
-
-// Auto-update initialization
-function initAutoUpdater() {
-    try {
-        // Skip auto-updater in development mode
-        if (!app.isPackaged) {
-            console.log('[AutoUpdater] Skipped in development (app is not packaged)');
-            return;
-        }
-
-        autoUpdater.setFeedURL({
-            provider: 'github',
-            owner: 'pickle-com',
-            repo: 'glass',
-        });
-
-        // Immediately check for updates & notify
-        autoUpdater.checkForUpdatesAndNotify()
-            .catch(err => {
-                console.error('[AutoUpdater] Error checking for updates:', err);
-            });
-
-        autoUpdater.on('checking-for-update', () => {
-            console.log('[AutoUpdater] Checking for updates…');
-        });
-
-        autoUpdater.on('update-available', (info) => {
-            console.log('[AutoUpdater] Update available:', info.version);
-        });
-
-        autoUpdater.on('update-not-available', () => {
-            console.log('[AutoUpdater] Application is up-to-date');
-        });
-
-        autoUpdater.on('error', (err) => {
-            console.error('[AutoUpdater] Error while updating:', err);
-        });
-
-        autoUpdater.on('update-downloaded', (info) => {
-            console.log(`[AutoUpdater] Update downloaded: ${info.version}`);
-
-            const dialogOpts = {
-                type: 'info',
-                buttons: ['Install now', 'Install on next launch'],
-                title: 'Update Available',
-                message: 'A new version of Glass is ready to be installed.',
-                defaultId: 0,
-                cancelId: 1
+        // Transform the app signatures to use direct file paths for images
+        const transformedSignatures = {};
+        for (const [appId, signature] of Object.entries(appSignatures)) {
+            transformedSignatures[appId] = {
+                ...signature,
+                icon: signature.icon.includes('.png') || signature.icon.includes('.jpg') || signature.icon.includes('.svg') 
+                    ? `./tools/${signature.icon.replace('tools/', '')}`
+                    : signature.icon
             };
+        }
+        
+        return transformedSignatures;
+    });
 
-            dialog.showMessageBox(dialogOpts).then((returnValue) => {
-                // returnValue.response 0 is for 'Install Now'
-                if (returnValue.response === 0) {
-                    autoUpdater.quitAndInstall();
-                }
-            });
-        });
-    } catch (e) {
-        console.error('[AutoUpdater] Failed to initialise:', e);
-    }
+    // Quit application handler
+    ipcMain.handle('quit-application', () => {
+        app.quit();
+    });
+
+    // Window collapse for assessment mode
+    ipcMain.handle('collapse-to-header', () => {
+        // This is now handled by window transitions
+        return { success: true };
+    });
+
+    // Assessment state transitions
+    ipcMain.handle('consent-accepted', () => {
+        console.log('[Codexel] Consent accepted, transitioning to ready window');
+        currentAssessmentState = 'READY_TO_START';
+        transitionToWindow(consentWindow, createReadyWindow);
+    });
+
+    ipcMain.handle('consent-declined', () => {
+        console.log('[Codexel] Consent declined, quitting application');
+        app.quit();
+    });
+
+    ipcMain.handle('start-assessment', async () => {
+        console.log('[Codexel] Starting assessment, transitioning to header window');
+        currentAssessmentState = 'ASSESSMENT_IN_PROGRESS';
+        
+        // Open GitHub URL
+        try {
+            await shell.openExternal('https://github.com/');
+        } catch (error) {
+            console.error('[Codexel] Error opening GitHub URL:', error);
+        }
+        
+        // Transition to header window
+        transitionToWindow(readyWindow, createHeaderWindow);
+    });
+
+    ipcMain.handle('stop-assessment', () => {
+        console.log('[Codexel] Stopping assessment, transitioning to completion window');
+        currentAssessmentState = 'ASSESSMENT_COMPLETE';
+        
+        // Stop telemetry
+        focusDetector.stop();
+        
+        // Transition to completion window
+        transitionToWindow(headerWindow, createCompletionWindow);
+    });
+
+    // Timer update from assessment timer
+    ipcMain.on('update-timer', (event, timerText) => {
+        if (headerWindow && !headerWindow.isDestroyed()) {
+            headerWindow.webContents.send('update-timer', timerText);
+        }
+    });
+
+    // Word count update from prompt listener
+    ipcMain.on('update-word-count', (event, wordCount) => {
+        if (headerWindow && !headerWindow.isDestroyed()) {
+            headerWindow.webContents.send('update-word-count', wordCount);
+        }
+    });
+
+    console.log('[Codexel] Multi-window assessment IPC handlers registered');
 }

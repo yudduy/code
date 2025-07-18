@@ -1062,7 +1062,7 @@ export class SettingsView extends LitElement {
                             >
                             <div class="key-buttons">
                                <button class="settings-button" @click=${() => this.handleSaveKey(id)} >Save</button>
-                               <button class="settings-button danger" @click=${() => this.handleClearKey(id)} }>Clear</button>
+                               <button class="settings-button danger" @click=${() => this.handleClearKey(id)}>Clear</button>
                             </div>
                         </div>
                     `)}

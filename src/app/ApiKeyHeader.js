@@ -271,8 +271,7 @@ export class ApiKeyHeader extends LitElement {
     this.sttApiKey = "";
     this.llmProvider = "openai";
     this.sttProvider = "openai";
-    this.providers = { llm: [], stt: [] }; // 초기화
-    this.loadProviderConfig();
+    this.providers = { llm: [], stt: [] }; // Initialize empty
     //////// after_modelStateService ////////
 
     this.handleMouseMove = this.handleMouseMove.bind(this)
@@ -282,7 +281,8 @@ export class ApiKeyHeader extends LitElement {
     this.handleInput = this.handleInput.bind(this)
     this.handleAnimationEnd = this.handleAnimationEnd.bind(this)
     this.handleUsePicklesKey = this.handleUsePicklesKey.bind(this)
-    this.handleProviderChange = this.handleProviderChange.bind(this)
+    this.handleLLMProviderChange = this.handleLLMProviderChange.bind(this)
+    this.handleSTTProviderChange = this.handleSTTProviderChange.bind(this)
   }
 
   reset() {
@@ -295,33 +295,71 @@ export class ApiKeyHeader extends LitElement {
   }
 
   async loadProviderConfig() {
-    if (!window.require) return;
-    const { ipcRenderer } = window.require('electron');
-    const config = await ipcRenderer.invoke('model:get-provider-config');
-    
-    const llmProviders = [];
-    const sttProviders = [];
-
-    for (const id in config) {
-        // 'openai-glass' 같은 가상 Provider는 UI에 표시하지 않음
-        if (id.includes('-glass')) continue;
-
-        if (config[id].llmModels.length > 0) {
-            llmProviders.push({ id, name: config[id].name });
-        }
-        if (config[id].sttModels.length > 0) {
-            sttProviders.push({ id, name: config[id].name });
-        }
+    if (!window.electronAPI) {
+      console.warn('[ApiKeyHeader] ElectronAPI not available, using fallback providers');
+      this.providers = {
+        llm: [
+          { id: 'openai', name: 'OpenAI' },
+          { id: 'gemini', name: 'Gemini' },
+          { id: 'anthropic', name: 'Anthropic' }
+        ],
+        stt: [
+          { id: 'openai', name: 'OpenAI' },
+          { id: 'gemini', name: 'Gemini' }
+        ]
+      };
+      this.requestUpdate();
+      return;
     }
     
-    this.providers = { llm: llmProviders, stt: sttProviders };
-    
-    // 기본 선택 값 설정
-    if (llmProviders.length > 0) this.llmProvider = llmProviders[0].id;
-    if (sttProviders.length > 0) this.sttProvider = sttProviders[0].id;
-    
-    this.requestUpdate();
-}
+    try {
+      const config = await window.electronAPI.getProviderConfig();
+      console.log('[ApiKeyHeader] Loaded provider config:', config);
+      
+      const llmProviders = [];
+      const sttProviders = [];
+
+      for (const id in config) {
+          // Skip 'openai-glass' and similar virtual providers from UI display
+          if (id.includes('-glass')) continue;
+
+          if (config[id].llmModels && config[id].llmModels.length > 0) {
+              llmProviders.push({ id, name: config[id].name });
+          }
+          if (config[id].sttModels && config[id].sttModels.length > 0) {
+              sttProviders.push({ id, name: config[id].name });
+          }
+      }
+      
+      this.providers = { llm: llmProviders, stt: sttProviders };
+      console.log('[ApiKeyHeader] Processed providers:', this.providers);
+      
+      // Set default selections if not already set
+      if (llmProviders.length > 0 && !this.llmProvider) {
+        this.llmProvider = llmProviders[0].id;
+      }
+      if (sttProviders.length > 0 && !this.sttProvider) {
+        this.sttProvider = sttProviders[0].id;
+      }
+      
+      this.requestUpdate();
+    } catch (error) {
+      console.error('[ApiKeyHeader] Failed to load provider config:', error);
+      // Fallback to default providers if loading fails
+      this.providers = {
+        llm: [
+          { id: 'openai', name: 'OpenAI' },
+          { id: 'gemini', name: 'Gemini' },
+          { id: 'anthropic', name: 'Anthropic' }
+        ],
+        stt: [
+          { id: 'openai', name: 'OpenAI' },
+          { id: 'gemini', name: 'Gemini' }
+        ]
+      };
+      this.requestUpdate();
+    }
+  }
 
   async handleMouseDown(e) {
     if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON" || e.target.tagName === "SELECT") {
@@ -330,8 +368,12 @@ export class ApiKeyHeader extends LitElement {
 
     e.preventDefault()
 
-    const { ipcRenderer } = window.require("electron")
-    const initialPosition = await ipcRenderer.invoke("get-header-position")
+    if (!window.electronAPI) {
+      console.warn('[ApiKeyHeader] ElectronAPI not available for drag operation');
+      return;
+    }
+
+    const initialPosition = await window.electronAPI.getHeaderPosition()
 
     this.dragState = {
       initialMouseX: e.screenX,
@@ -358,8 +400,9 @@ export class ApiKeyHeader extends LitElement {
     const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX)
     const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY)
 
-    const { ipcRenderer } = window.require("electron")
-    ipcRenderer.invoke("move-header-to", newWindowX, newWindowY)
+    if (window.electronAPI) {
+      window.electronAPI.moveHeaderTo(newWindowX, newWindowY)
+    }
   }
 
   handleMouseUp(e) {
@@ -392,11 +435,20 @@ export class ApiKeyHeader extends LitElement {
     })
   }
 
-  handleProviderChange(e) {
-    this.selectedProvider = e.target.value
-    this.errorMessage = ""
-    console.log("Provider changed to:", this.selectedProvider)
-    this.requestUpdate()
+  handleLLMProviderChange(e) {
+    const newProvider = e.target.value;
+    console.log('[ApiKeyHeader] LLM provider changed to:', newProvider);
+    this.llmProvider = newProvider;
+    this.errorMessage = "";
+    this.requestUpdate();
+  }
+
+  handleSTTProviderChange(e) {
+    const newProvider = e.target.value;
+    console.log('[ApiKeyHeader] STT provider changed to:', newProvider);
+    this.sttProvider = newProvider;
+    this.errorMessage = "";
+    this.requestUpdate();
   }
 
   handlePaste(e) {
@@ -441,13 +493,24 @@ export class ApiKeyHeader extends LitElement {
     this.errorMessage = "";
     this.requestUpdate();
 
-    const { ipcRenderer } = window.require('electron');
+    if (!window.electronAPI) {
+      console.error('[ApiKeyHeader] ElectronAPI not available for validation');
+      this.errorMessage = 'Application initialization error. Please restart the application.';
+      this.isLoading = false;
+      this.requestUpdate();
+      return;
+    }
 
-    console.log('[ApiKeyHeader] handleSubmit: Validating LLM key...');
-    const llmValidation = ipcRenderer.invoke('model:validate-key', { provider: this.llmProvider, key: this.llmApiKey.trim() });
-    const sttValidation = ipcRenderer.invoke('model:validate-key', { provider: this.sttProvider, key: this.sttApiKey.trim() });
-
+    console.log('[ApiKeyHeader] handleSubmit: Validating keys...');
+    console.log('[ApiKeyHeader] LLM Provider:', this.llmProvider, 'Key length:', this.llmApiKey.trim().length);
+    console.log('[ApiKeyHeader] STT Provider:', this.sttProvider, 'Key length:', this.sttApiKey.trim().length);
+    
+    const llmValidation = window.electronAPI.validateApiKey(this.llmProvider, this.llmApiKey.trim());
+    const sttValidation = window.electronAPI.validateApiKey(this.sttProvider, this.sttApiKey.trim());
+    
+    console.log('[ApiKeyHeader] IPC validation requests sent, waiting for responses...');
     const [llmResult, sttResult] = await Promise.all([llmValidation, sttValidation]);
+    console.log('[ApiKeyHeader] Validation results received:', { llmResult, sttResult });
 
     if (llmResult.success && sttResult.success) {
         console.log('[ApiKeyHeader] handleSubmit: Both LLM and STT keys are valid.');
@@ -476,16 +539,16 @@ export class ApiKeyHeader extends LitElement {
     if (this.wasJustDragged) return
 
     console.log("Requesting Firebase authentication from main process...")
-    if (window.require) {
-      window.require("electron").ipcRenderer.invoke("start-firebase-auth")
+    if (window.electronAPI) {
+      window.electronAPI.startFirebaseAuth()
     }
   }
 
   handleClose() {
     console.log("Close button clicked")
-    if (window.require) {
-      window.require("electron").ipcRenderer.invoke("quit-application")
-    }
+    // Note: quit-application is not currently exposed in electronAPI
+    // This functionality may need to be added if needed
+    console.warn('[ApiKeyHeader] Close functionality not available via electronAPI')
   }
 
 
@@ -494,16 +557,35 @@ export class ApiKeyHeader extends LitElement {
     if (e.target !== this || !this.classList.contains('sliding-out')) return;
     this.classList.remove("sliding-out");
     this.classList.add("hidden");
-    window.require('electron').ipcRenderer.invoke('get-current-user').then(userState => {
-        console.log('[ApiKeyHeader] handleAnimationEnd: User state updated:', userState);
-        this.stateUpdateCallback?.(userState);
-    });
+    if (window.electronAPI) {
+      window.electronAPI.getCurrentUser().then(userState => {
+          console.log('[ApiKeyHeader] handleAnimationEnd: User state updated:', userState);
+          this.stateUpdateCallback?.(userState);
+      });
+    }
   }
 //////// after_modelStateService ////////
+
+  async requestWindowExpand() {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.resizeHeaderWindow(390, 320);
+        console.log('[ApiKeyHeader] Window resized for API key entry');
+      } catch (error) {
+        console.warn('[ApiKeyHeader] Failed to resize window:', error.message);
+      }
+    }
+  }
 
   connectedCallback() {
     super.connectedCallback()
     this.addEventListener("animationend", this.handleAnimationEnd)
+    
+    // Load provider configurations first
+    this.loadProviderConfig();
+    
+    // Request window resize on mount to ensure proper sizing for API key UI
+    this.requestWindowExpand();
   }
 
   disconnectedCallback() {
@@ -521,16 +603,22 @@ export class ApiKeyHeader extends LitElement {
             <div class="providers-container">
                 <div class="provider-column">
                     <div class="provider-label"></div>
-                    <select class="provider-select" .value=${this.llmProvider} @change=${e => this.llmProvider = e.target.value} ?disabled=${this.isLoading}>
-                        ${this.providers.llm.map(p => html`<option value=${p.id}>${p.name}</option>`)}
+                    <select class="provider-select" .value=${this.llmProvider} @change=${this.handleLLMProviderChange} ?disabled=${this.isLoading}>
+                        ${this.providers.llm && this.providers.llm.length > 0 
+                          ? this.providers.llm.map(p => html`<option value=${p.id}>${p.name}</option>`)
+                          : html`<option value="openai">Loading...</option>`
+                        }
                     </select>
                     <input type="password" class="api-input" placeholder="LLM Provider API Key" .value=${this.llmApiKey} @input=${e => this.llmApiKey = e.target.value} ?disabled=${this.isLoading}>
                 </div>
 
                 <div class="provider-column">
                     <div class="provider-label"></div>
-                    <select class="provider-select" .value=${this.sttProvider} @change=${e => this.sttProvider = e.target.value} ?disabled=${this.isLoading}>
-                        ${this.providers.stt.map(p => html`<option value=${p.id}>${p.name}</option>`)}
+                    <select class="provider-select" .value=${this.sttProvider} @change=${this.handleSTTProviderChange} ?disabled=${this.isLoading}>
+                        ${this.providers.stt && this.providers.stt.length > 0 
+                          ? this.providers.stt.map(p => html`<option value=${p.id}>${p.name}</option>`)
+                          : html`<option value="openai">Loading...</option>`
+                        }
                     </select>
                     <input type="password" class="api-input" placeholder="STT Provider API Key" .value=${this.sttApiKey} @input=${e => this.sttApiKey = e.target.value} ?disabled=${this.isLoading}>
                 </div>

@@ -1,6 +1,6 @@
 const { ipcMain, BrowserWindow } = require('electron');
 const { createStreamingLLM } = require('../../common/ai/factory');
-const { getStoredApiKey, getStoredProvider, getCurrentModelInfo, windowPool, captureScreenshot } = require('../../electron/windowManager');
+const { getStoredApiKey, getStoredProvider, windowPool, captureScreenshot } = require('../../electron/windowManager');
 const authService = require('../../common/services/authService');
 const sessionRepository = require('../../common/repositories/session');
 const askRepository = require('./repositories');
@@ -31,7 +31,7 @@ async function sendMessage(userPrompt) {
     try {
         console.log(`[AskService] 🤖 Processing message: ${userPrompt.substring(0, 50)}...`);
 
-        const modelInfo = await getCurrentModelInfo(null, { type: 'llm' });
+        const modelInfo = global.modelStateService ? global.modelStateService.getCurrentModelInfo('llm') : null;
         if (!modelInfo || !modelInfo.apiKey) {
             throw new Error('AI model or API key not configured.');
         }

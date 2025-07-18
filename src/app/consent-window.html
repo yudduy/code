@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-security-policy" content="script-src 'self' 'unsafe-inline'" />
+        <title>Codexel Assessment - Consent</title>
+        <style>
+            :root {
+                --text-color: #e5e5e7;
+                --background-transparent: transparent;
+                --button-background: rgba(0, 0, 0, 0.5);
+                --button-border: rgba(255, 255, 255, 0.1);
+                --hover-background: rgba(255, 255, 255, 0.1);
+                --focus-border-color: #007aff;
+                --focus-box-shadow: rgba(0, 122, 255, 0.2);
+                --border-radius: 7px;
+                --consent-emphasis-color: #007aff;
+            }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: transparent;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                overflow: hidden;
+            }
+
+            * {
+                box-sizing: border-box;
+                cursor: default;
+                user-select: none;
+            }
+
+            .consent-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                opacity: 0;
+                animation: fadeIn 0.6s ease-out forwards;
+            }
+
+            @keyframes fadeIn {
+                to {
+                    opacity: 1;
+                }
+            }
+
+            .consent-container {
+                width: 520px;
+                max-width: 90vw;
+                max-height: 90vh;
+                background: rgba(0, 0, 0, 0.8);
+                border-radius: 16px;
+                padding: 40px;
+                color: var(--text-color);
+                position: relative;
+                overflow-y: auto;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                transform: scale(0.95);
+                animation: slideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            }
+
+            @keyframes slideIn {
+                to {
+                    transform: scale(1);
+                }
+            }
+
+            .consent-container::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .consent-container::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+            }
+
+            .consent-container::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 3px;
+            }
+
+            .consent-container::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+
+            .consent-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 16px;
+                padding: 1px;
+                background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: destination-out;
+                mask-composite: exclude;
+                pointer-events: none;
+            }
+
+            .consent-header {
+                text-align: center;
+                margin-bottom: 32px;
+            }
+
+            .consent-title {
+                font-size: 28px;
+                font-weight: 600;
+                color: white;
+                margin: 0 0 12px 0;
+                background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .consent-subtitle {
+                font-size: 15px;
+                color: rgba(255, 255, 255, 0.7);
+                margin: 0;
+                line-height: 1.4;
+            }
+
+            .consent-content {
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                margin-bottom: 32px;
+            }
+
+            .consent-section {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .consent-section-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: white;
+                margin: 0;
+            }
+
+            .consent-section-text {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.8);
+                line-height: 1.5;
+                margin: 0;
+            }
+
+            .consent-list {
+                margin: 0;
+                padding-left: 20px;
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 14px;
+                line-height: 1.6;
+            }
+
+            .consent-list li {
+                margin-bottom: 8px;
+            }
+
+            .consent-list strong {
+                color: var(--consent-emphasis-color);
+                font-weight: 600;
+            }
+
+            .consent-emphasis {
+                color: var(--consent-emphasis-color);
+                font-weight: 600;
+            }
+
+            .consent-actions {
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                margin-bottom: 20px;
+            }
+
+            .consent-button {
+                padding: 12px 24px;
+                border-radius: var(--border-radius);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+                min-width: 120px;
+                outline: none;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .consent-button-primary {
+                background: rgba(0, 122, 255, 0.1);
+                color: var(--consent-emphasis-color);
+                border-color: rgba(0, 122, 255, 0.3);
+            }
+
+            .consent-button-primary:hover {
+                background: rgba(0, 122, 255, 0.2);
+                border-color: rgba(0, 122, 255, 0.4);
+            }
+
+            .consent-button-secondary {
+                background: transparent;
+                color: rgba(255, 255, 255, 0.9);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .consent-button-secondary:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            .consent-button:active {
+                transform: scale(0.98);
+            }
+
+            .consent-footer {
+                text-align: center;
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1.4;
+            }
+
+            /* Responsive design */
+            @media (max-width: 600px) {
+                .consent-container {
+                    width: 95vw;
+                    padding: 32px 24px;
+                }
+
+                .consent-title {
+                    font-size: 24px;
+                }
+
+                .consent-actions {
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .consent-button {
+                    width: 100%;
+                }
+            }
+
+            /* Liquid Glass Mode Styles */
+            body.has-glass .consent-overlay {
+                background: rgba(0, 0, 0, 0.3);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            body.has-glass .consent-container {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: none;
+            }
+
+            body.has-glass .consent-container::before {
+                background: none;
+            }
+
+            body.has-glass .consent-button-primary {
+                background: rgba(0, 122, 255, 0.05);
+                border-color: rgba(0, 122, 255, 0.2);
+            }
+
+            body.has-glass .consent-button-primary:hover {
+                background: rgba(0, 122, 255, 0.1);
+                border-color: rgba(0, 122, 255, 0.3);
+            }
+
+            body.has-glass .consent-button-secondary {
+                background: rgba(255, 255, 255, 0.03);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            body.has-glass .consent-button-secondary:hover {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="consent-overlay">
+            <div class="consent-container">
+                <div class="consent-header">
+                    <h1 class="consent-title">Codexel Assessment</h1>
+                    <p class="consent-subtitle">Privacy & Data Collection Consent</p>
+                </div>
+
+                <div class="consent-content">
+                    <div class="consent-section">
+                        <h3 class="consent-section-title">What we collect</h3>
+                        <p class="consent-section-text">
+                            During your 90-minute assessment, we will collect <span class="consent-emphasis">minimal telemetry data</span> to evaluate your AI-collaboration skills:
+                        </p>
+                        <ul class="consent-list">
+                            <li><strong>Application Focus:</strong> Which applications you switch between (e.g., VS Code, ChatGPT, browser)</li>
+                            <li><strong>Prompt Submissions:</strong> When you submit prompts to AI tools (text content optional)</li>
+                        </ul>
+                    </div>
+
+                    <div class="consent-section">
+                        <h3 class="consent-section-title">What we don't collect</h3>
+                        <ul class="consent-list">
+                            <li>Screen recordings or screenshots</li>
+                            <li>Keystroke logging or detailed typing behavior</li>
+                            <li>File contents or source code</li>
+                            <li>Personal information beyond assessment data</li>
+                        </ul>
+                    </div>
+
+                    <div class="consent-section">
+                        <h3 class="consent-section-title">Data usage</h3>
+                        <p class="consent-section-text">
+                            This data is used solely for <span class="consent-emphasis">assessment evaluation</span> and will be processed according to our privacy policy.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="consent-actions">
+                    <button class="consent-button consent-button-secondary" id="decline-button">
+                        Decline
+                    </button>
+                    <button class="consent-button consent-button-primary" id="accept-button">
+                        Accept & Continue
+                    </button>
+                </div>
+
+                <div class="consent-footer">
+                    By continuing, you agree to participate in the Codexel assessment under these terms.
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Glass effect parameter handling
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('glass') === 'true') {
+                document.body.classList.add('has-glass');
+                console.log('[Consent Window] Liquid glass mode enabled');
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const acceptButton = document.getElementById('accept-button');
+                const declineButton = document.getElementById('decline-button');
+
+                acceptButton.addEventListener('click', async () => {
+                    // Animate button feedback
+                    acceptButton.style.background = 'rgba(0, 122, 255, 0.3)';
+                    
+                    // Fade out overlay
+                    const overlay = document.querySelector('.consent-overlay');
+                    overlay.style.transition = 'opacity 0.3s ease-out';
+                    overlay.style.opacity = '0';
+                    
+                    // Wait for animation then trigger IPC
+                    setTimeout(async () => {
+                        if (window.electronAPI) {
+                            await window.electronAPI.consentAccepted();
+                        }
+                    }, 300);
+                });
+
+                declineButton.addEventListener('click', async () => {
+                    // Animate button feedback
+                    declineButton.style.background = 'rgba(255, 255, 255, 0.2)';
+                    
+                    // Fade out overlay
+                    const overlay = document.querySelector('.consent-overlay');
+                    overlay.style.transition = 'opacity 0.3s ease-out';
+                    overlay.style.opacity = '0';
+                    
+                    // Wait for animation then trigger IPC
+                    setTimeout(async () => {
+                        if (window.electronAPI) {
+                            await window.electronAPI.consentDeclined();
+                        }
+                    }, 300);
+                });
+            });
+        </script>
+    </body>
+</html>

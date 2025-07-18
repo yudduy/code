@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-security-policy" content="script-src 'self' 'unsafe-inline'" />
+        <title>Codexel Assessment - Complete</title>
+        <style>
+            :root {
+                --text-color: #e5e5e7;
+                --background-transparent: transparent;
+                --button-background: rgba(0, 0, 0, 0.5);
+                --button-border: rgba(255, 255, 255, 0.1);
+                --hover-background: rgba(255, 255, 255, 0.1);
+                --focus-border-color: #007aff;
+                --focus-box-shadow: rgba(0, 122, 255, 0.2);
+                --border-radius: 7px;
+                --success-color: #30d158;
+                --primary-color: #007aff;
+                --success-gradient: linear-gradient(135deg, #30d158 0%, #28a745 100%);
+            }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: transparent;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                overflow: hidden;
+            }
+
+            * {
+                box-sizing: border-box;
+                cursor: default;
+                user-select: none;
+            }
+
+            .completion-container {
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 16px;
+                position: relative;
+                overflow: hidden;
+                opacity: 0;
+                animation: fadeIn 0.8s ease-out forwards;
+            }
+
+            @keyframes fadeIn {
+                to {
+                    opacity: 1;
+                }
+            }
+
+            .completion-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 16px;
+                padding: 1px;
+                background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: destination-out;
+                mask-composite: exclude;
+                pointer-events: none;
+            }
+
+            .completion-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 32px;
+                text-align: center;
+                animation: slideIn 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                opacity: 0;
+                animation-delay: 0.3s;
+            }
+
+            @keyframes slideIn {
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%);
+                }
+            }
+
+            .completion-header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .completion-icon {
+                width: 80px;
+                height: 80px;
+                background: var(--success-gradient);
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 16px 50px rgba(48, 209, 88, 0.4);
+                animation: celebration 1.5s ease-out;
+                animation-delay: 0.8s;
+            }
+
+            @keyframes celebration {
+                0% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.1);
+                }
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            .completion-icon svg {
+                width: 40px;
+                height: 40px;
+                fill: white;
+            }
+
+            .completion-title {
+                font-size: 40px;
+                font-weight: 700;
+                color: white;
+                margin: 0;
+                background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .completion-subtitle {
+                font-size: 18px;
+                color: rgba(255, 255, 255, 0.8);
+                margin: 0;
+                line-height: 1.5;
+                max-width: 420px;
+            }
+
+            .completion-stats {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                padding: 32px;
+                background: rgba(0, 0, 0, 0.4);
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                max-width: 480px;
+                width: 100%;
+            }
+
+            .stats-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .stats-row:last-child {
+                border-bottom: none;
+            }
+
+            .stats-label {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.7);
+                font-weight: 500;
+            }
+
+            .stats-value {
+                font-size: 16px;
+                color: white;
+                font-weight: 600;
+            }
+
+            .stats-value.success {
+                color: var(--success-color);
+            }
+
+            .completion-message {
+                padding: 24px;
+                background: rgba(48, 209, 88, 0.1);
+                border: 1px solid rgba(48, 209, 88, 0.2);
+                border-radius: 12px;
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 15px;
+                line-height: 1.5;
+                max-width: 480px;
+                width: 100%;
+            }
+
+            .completion-actions {
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                margin-top: 8px;
+            }
+
+            .completion-button {
+                padding: 14px 28px;
+                border-radius: var(--border-radius);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+                min-width: 140px;
+                outline: none;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .completion-button-primary {
+                background: rgba(0, 122, 255, 0.1);
+                color: var(--primary-color);
+                border-color: rgba(0, 122, 255, 0.3);
+            }
+
+            .completion-button-primary:hover {
+                background: rgba(0, 122, 255, 0.2);
+                border-color: rgba(0, 122, 255, 0.4);
+                transform: translateY(-1px);
+                box-shadow: 0 8px 25px rgba(0, 122, 255, 0.2);
+            }
+
+            .completion-button-secondary {
+                background: transparent;
+                color: rgba(255, 255, 255, 0.9);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .completion-button-secondary:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.3);
+                transform: translateY(-1px);
+            }
+
+            .completion-button:active {
+                transform: translateY(0);
+            }
+
+            .completion-footer {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.6);
+                text-align: center;
+                max-width: 400px;
+                line-height: 1.5;
+            }
+
+            /* Confetti animation */
+            .confetti {
+                position: absolute;
+                top: -10px;
+                left: 50%;
+                width: 10px;
+                height: 10px;
+                background: var(--success-color);
+                border-radius: 50%;
+                animation: confetti-fall 3s linear infinite;
+                opacity: 0.8;
+            }
+
+            @keyframes confetti-fall {
+                0% {
+                    transform: translateX(-50px) translateY(-100vh) rotate(0deg);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateX(50px) translateY(100vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+
+            /* Responsive design */
+            @media (max-width: 600px) {
+                .completion-content {
+                    padding: 20px;
+                    gap: 24px;
+                }
+                
+                .completion-title {
+                    font-size: 32px;
+                }
+                
+                .completion-stats {
+                    padding: 24px;
+                    max-width: none;
+                }
+                
+                .completion-actions {
+                    flex-direction: column;
+                    width: 100%;
+                }
+                
+                .completion-button {
+                    width: 100%;
+                    max-width: 280px;
+                }
+            }
+            /* Liquid Glass Mode Styles */
+            body.has-glass .completion-container {
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            body.has-glass .completion-container::before {
+                background: none;
+            }
+
+            body.has-glass .completion-main-content {
+                background: rgba(0, 0, 0, 0.3);
+            }
+
+            body.has-glass .completion-main-content::before {
+                background: none;
+            }
+
+            body.has-glass .completion-button {
+                background: rgba(0, 122, 255, 0.05);
+                border-color: rgba(0, 122, 255, 0.2);
+            }
+
+            body.has-glass .completion-button:hover {
+                background: rgba(0, 122, 255, 0.1);
+                border-color: rgba(0, 122, 255, 0.3);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="completion-container">
+            <!-- Subtle confetti effect -->
+            <div class="confetti" style="animation-delay: 0s; left: 10%;"></div>
+            <div class="confetti" style="animation-delay: 0.5s; left: 20%; background: #007aff;"></div>
+            <div class="confetti" style="animation-delay: 1s; left: 80%; background: #ff9500;"></div>
+            <div class="confetti" style="animation-delay: 1.5s; left: 90%;"></div>
+
+            <div class="completion-content">
+                <div class="completion-header">
+                    <div class="completion-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                    
+                    <h1 class="completion-title">Assessment Complete!</h1>
+                    <p class="completion-subtitle">
+                        Congratulations! You've successfully completed your Codexel AI-collaboration assessment.
+                    </p>
+                </div>
+
+                <div class="completion-stats">
+                    <div class="stats-row">
+                        <span class="stats-label">Duration</span>
+                        <span class="stats-value" id="duration-value">90:00</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Focus Changes</span>
+                        <span class="stats-value" id="focus-changes-value">--</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">AI Interactions</span>
+                        <span class="stats-value" id="ai-interactions-value">--</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Status</span>
+                        <span class="stats-value success">Completed</span>
+                    </div>
+                </div>
+
+                <div class="completion-message">
+                    Your assessment data has been saved and will be reviewed by our team. 
+                    You'll receive feedback on your AI collaboration skills within 48 hours.
+                </div>
+
+                <div class="completion-actions">
+                    <button class="completion-button completion-button-secondary" id="view-summary-button">
+                        View Summary
+                    </button>
+                    <button class="completion-button completion-button-primary" id="close-button">
+                        Close Application
+                    </button>
+                </div>
+
+                <div class="completion-footer">
+                    Thank you for participating in the Codexel assessment. 
+                    Your performance will help us understand how developers collaborate with AI tools.
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Glass effect parameter handling
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('glass') === 'true') {
+                document.body.classList.add('has-glass');
+                console.log('[Completion Window] Liquid glass mode enabled');
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const closeButton = document.getElementById('close-button');
+                const viewSummaryButton = document.getElementById('view-summary-button');
+
+                // Update stats with actual data if available
+                if (window.electronAPI) {
+                    // TODO: Get actual assessment statistics from the main process
+                    // This would include telemetry data collected during the assessment
+                }
+
+                closeButton.addEventListener('click', async () => {
+                    // Animate button feedback
+                    closeButton.style.background = 'rgba(0, 122, 255, 0.3)';
+                    
+                    // Fade out container
+                    const container = document.querySelector('.completion-container');
+                    container.style.transition = 'opacity 0.4s ease-out';
+                    container.style.opacity = '0';
+                    
+                    // Wait for animation then quit
+                    setTimeout(async () => {
+                        if (window.electronAPI) {
+                            await window.electronAPI.quitApplication();
+                        }
+                    }, 400);
+                });
+
+                viewSummaryButton.addEventListener('click', () => {
+                    // Animate button feedback
+                    viewSummaryButton.style.background = 'rgba(255, 255, 255, 0.2)';
+                    
+                    // TODO: Implement summary view
+                    // This could open a modal or navigate to a summary page
+                    console.log('View summary clicked');
+                    
+                    // Reset button after a short delay
+                    setTimeout(() => {
+                        viewSummaryButton.style.background = 'transparent';
+                    }, 200);
+                });
+
+                // Add a subtle entrance delay to stats
+                const statsRows = document.querySelectorAll('.stats-row');
+                statsRows.forEach((row, index) => {
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                    row.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    
+                    setTimeout(() => {
+                        row.style.opacity = '1';
+                        row.style.transform = 'translateX(0)';
+                    }, 1000 + (index * 100));
+                });
+            });
+        </script>
+    </body>
+</html>

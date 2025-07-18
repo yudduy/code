@@ -2,26 +2,451 @@
 <html>
     <head>
         <meta http-equiv="content-security-policy" content="script-src 'self' 'unsafe-inline'" />
-        <title>Pickle Glass Header</title>
+        <title>Codexel Assessment Header</title>
         <style>
-            html,
-            body {
+            :root {
+                --text-color: #e5e5e7;
+                --background-transparent: transparent;
+                --border-color: rgba(255, 255, 255, 0.2);
+                --header-background: rgba(0, 0, 0, 0.8);
+                --button-background: rgba(0, 0, 0, 0.5);
+                --button-border: rgba(255, 255, 255, 0.1);
+                --hover-background: rgba(255, 255, 255, 0.1);
+                --primary-color: #007aff;
+                --warning-color: #ff9500;
+                --critical-color: #ff3b30;
+                --border-radius: 7px;
+            }
+
+            html, body {
                 margin: 0;
                 padding: 0;
                 overflow: hidden;
                 background: transparent;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+                cursor: default;
+                user-select: none;
+            }
+
+            .assessment-header {
+                width: 100%;
+                height: 52px;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 26px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 16px;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+
+            .assessment-header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 26px;
+                padding: 1px;
+                background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: destination-out;
+                mask-composite: exclude;
+                pointer-events: none;
+            }
+
+            .header-left, .header-center, .header-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                position: relative;
+                z-index: 1;
+            }
+
+            .header-center {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .focus-indicator {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 8px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                min-width: 32px;
+                justify-content: center;
+            }
+
+            .focus-icon {
+                width: 14px;
+                height: 14px;
+                border-radius: 3px;
+                background: rgba(255, 255, 255, 0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 8px;
+                font-weight: 600;
+                color: white;
+                overflow: hidden;
+            }
+
+            .focus-icon img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                border-radius: 2px;
+            }
+
+            .assessment-timer {
+                color: var(--text-color);
+                font-size: 12px;
+                font-weight: 600;
+                font-family: 'Monaco', 'Menlo', monospace;
+                background: transparent;
+                padding: 6px 12px;
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                min-width: 60px;
+                text-align: center;
+                transition: all 0.3s ease;
+            }
+
+            .assessment-timer.warning {
+                color: var(--warning-color);
+                border-color: rgba(255, 149, 0, 0.3);
+                background: rgba(255, 149, 0, 0.1);
+            }
+
+            .assessment-timer.critical {
+                color: var(--critical-color);
+                border-color: rgba(255, 59, 48, 0.3);
+                background: rgba(255, 59, 48, 0.1);
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+                0%, 100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            .word-counter {
+                color: var(--text-color);
+                font-size: 11px;
+                font-weight: 500;
+                background: transparent;
+                padding: 6px 10px;
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                min-width: 40px;
+                text-align: center;
+                transition: all 0.3s ease;
+            }
+
+            .word-counter.active {
+                color: var(--primary-color);
+                border-color: rgba(0, 122, 255, 0.3);
+                background: rgba(0, 122, 255, 0.1);
+            }
+
+            .stop-button {
+                background: transparent;
+                color: var(--text-color);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 11px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+                min-width: 50px;
+                height: 28px;
+            }
+
+            .stop-button:hover {
+                background: rgba(255, 59, 48, 0.1);
+                border-color: rgba(255, 59, 48, 0.3);
+                color: var(--critical-color);
+            }
+
+            .stop-button:active {
+                background: rgba(255, 59, 48, 0.2);
+            }
+
+            .settings-button {
+                background: transparent;
+                color: var(--text-color);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 0;
+                cursor: pointer;
+                transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+            }
+
+            .settings-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            .settings-button svg {
+                width: 14px;
+                height: 14px;
+                fill: currentColor;
+            }
+
+            /* Draggable area */
+            .header-drag-area {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                -webkit-app-region: drag;
+                z-index: 0;
+            }
+
+            .header-left, .header-center, .header-right {
+                -webkit-app-region: no-drag;
+            }
+
+            /* Liquid Glass Mode Styles */
+            body.has-glass .assessment-header {
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                box-shadow: none;
+            }
+
+            body.has-glass .assessment-header::before {
+                background: none;
+            }
+
+            body.has-glass .focus-indicator,
+            body.has-glass .assessment-timer,
+            body.has-glass .word-counter,
+            body.has-glass .stop-button,
+            body.has-glass .settings-button {
+                background: rgba(255, 255, 255, 0.03);
+                border-color: rgba(255, 255, 255, 0.08);
+            }
+
+            body.has-glass .stop-button:hover {
+                background: rgba(255, 59, 48, 0.08);
+                border-color: rgba(255, 59, 48, 0.2);
+            }
+
+            body.has-glass .settings-button:hover {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.2);
             }
         </style>
     </head>
     <body>
-        <div id="header-container" tabindex="0" style="outline: none;">
+        <div class="assessment-header">
+            <div class="header-drag-area"></div>
+            
+            <div class="header-left">
+                <!-- Focus Indicator -->
+                <div class="focus-indicator" title="Currently focused application">
+                    <div class="focus-icon" id="focus-icon">⚪</div>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <!-- Timer -->
+                <div class="assessment-timer" id="timer">90:00</div>
+            </div>
+
+            <div class="header-right">
+                <!-- Word Counter -->
+                <div class="word-counter" id="word-counter" title="Current prompt words">0w</div>
+                
+                <!-- Stop Button -->
+                <button class="stop-button" id="stop-button" title="Stop assessment">Stop</button>
+                
+                <!-- Settings Button -->
+                <button class="settings-button" id="settings-button" title="Settings">
+                    <svg viewBox="0 0 16 17">
+                        <path d="M8.0013 3.16406C7.82449 3.16406 7.65492 3.2343 7.5299 3.35932C7.40487 3.48435 7.33464 3.65392 7.33464 3.83073C7.33464 4.00754 7.40487 4.17711 7.5299 4.30213C7.65492 4.42716 7.82449 4.4974 8.0013 4.4974C8.17811 4.4974 8.34768 4.42716 8.47271 4.30213C8.59773 4.17711 8.66797 4.00754 8.66797 3.83073C8.66797 3.65392 8.59773 3.48435 8.47271 3.35932C8.34768 3.2343 8.17811 3.16406 8.0013 3.16406ZM8.0013 7.83073C7.82449 7.83073 7.65492 7.90097 7.5299 8.02599C7.40487 8.15102 7.33464 8.32058 7.33464 8.4974C7.33464 8.67421 7.40487 8.84378 7.5299 8.9688C7.65492 9.09382 7.82449 9.16406 8.0013 9.16406C8.17811 9.16406 8.34768 9.09382 8.47271 8.9688C8.59773 8.84378 8.66797 8.67421 8.66797 8.4974C8.66797 8.32058 8.59773 8.15102 8.47271 8.02599C8.34768 7.90097 8.17811 7.83073 8.0013 7.83073ZM8.0013 12.4974C7.82449 12.4974 7.65492 12.5676 7.5299 12.6927C7.40487 12.8177 7.33464 12.9873 7.33464 13.1641C7.33464 13.3409 7.40487 13.5104 7.5299 13.6355C7.65492 13.7605 8.17811 13.8307 8.0013 13.8307C8.17811 13.8307 8.34768 13.7605 8.47271 13.6355C8.59773 13.5104 8.66797 13.3409 8.66797 13.1641C8.66797 12.9873 8.59773 12.8177 8.47271 12.6927C8.34768 12.5676 8.17811 12.4974 8.0013 12.4974Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
-        <script type="module" src="../../public/build/header.js"></script>
         <script>
+            let appSignatures = {};
+            let currentTimer = '90:00';
+            let currentWordCount = 0;
+            let currentFocusedApp = null;
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                console.log('[Assessment Header] Initializing...');
+                
+                // Load app signatures
+                if (window.electronAPI) {
+                    try {
+                        appSignatures = await window.electronAPI.getAppSignatures();
+                        console.log('[Assessment Header] App signatures loaded:', Object.keys(appSignatures).length);
+                    } catch (error) {
+                        console.error('[Assessment Header] Failed to load app signatures:', error);
+                    }
+                }
+
+                // Setup event listeners
+                setupEventListeners();
+                
+                // Setup IPC listeners
+                setupIPCListeners();
+                
+                console.log('[Assessment Header] Initialized successfully');
+            });
+
+            function setupEventListeners() {
+                const stopButton = document.getElementById('stop-button');
+                const settingsButton = document.getElementById('settings-button');
+
+                stopButton.addEventListener('click', async () => {
+                    console.log('[Assessment Header] Stop button clicked');
+                    if (window.electronAPI) {
+                        await window.electronAPI.stopAssessment();
+                    }
+                });
+
+                // Settings button hover effects (placeholder)
+                settingsButton.addEventListener('mouseenter', () => {
+                    console.log('[Assessment Header] Settings hover');
+                });
+
+                settingsButton.addEventListener('mouseleave', () => {
+                    console.log('[Assessment Header] Settings unhover');
+                });
+            }
+
+            function setupIPCListeners() {
+                if (!window.electronAPI) return;
+
+                // Listen for focus changes
+                window.electronAPI.onFocusChange((event, focusEvent) => {
+                    if (focusEvent && focusEvent.appId) {
+                        updateFocusIndicator(focusEvent.appId);
+                    }
+                });
+
+                // Listen for timer updates
+                window.electronAPI.onUpdateTimer && window.electronAPI.onUpdateTimer((event, timerText) => {
+                    updateTimer(timerText);
+                });
+
+                // Listen for word count updates
+                window.electronAPI.onUpdateWordCount && window.electronAPI.onUpdateWordCount((event, wordCount) => {
+                    updateWordCount(wordCount);
+                });
+            }
+
+            function updateFocusIndicator(appId) {
+                currentFocusedApp = appId;
+                const focusIcon = document.getElementById('focus-icon');
+                const focusIndicator = focusIcon.parentElement;
+                
+                const appInfo = getAppDisplayInfo(appId);
+                
+                if (appInfo.isImage) {
+                    focusIcon.innerHTML = `<img src="${appInfo.icon}" alt="${appInfo.name}" />`;
+                } else {
+                    focusIcon.textContent = appInfo.icon;
+                }
+                
+                focusIndicator.title = `Currently focused: ${appInfo.name}`;
+                console.log('[Assessment Header] Focus updated to:', appInfo.name);
+            }
+
+            function updateTimer(timerText) {
+                currentTimer = timerText;
+                const timerElement = document.getElementById('timer');
+                timerElement.textContent = timerText;
+                
+                // Update timer styling based on time remaining
+                const timerClass = getTimerClass(timerText);
+                timerElement.className = `assessment-timer ${timerClass}`;
+                
+                console.log('[Assessment Header] Timer updated to:', timerText, 'class:', timerClass);
+            }
+
+            function updateWordCount(wordCount) {
+                currentWordCount = wordCount;
+                const wordCountElement = document.getElementById('word-counter');
+                wordCountElement.textContent = `${wordCount}w`;
+                
+                if (wordCount > 0) {
+                    wordCountElement.classList.add('active');
+                } else {
+                    wordCountElement.classList.remove('active');
+                }
+                
+                console.log('[Assessment Header] Word count updated to:', wordCount);
+            }
+
+            function getAppDisplayInfo(appId) {
+                if (!appId || typeof appId !== 'string') {
+                    return { name: 'Unknown', icon: '📱', isImage: false };
+                }
+                
+                const appInfo = appSignatures[appId];
+                if (appInfo && appInfo.displayName && appInfo.icon) {
+                    return {
+                        name: appInfo.displayName,
+                        icon: appInfo.icon,
+                        isImage: appInfo.icon.includes('.png') || appInfo.icon.includes('.jpg') || appInfo.icon.includes('.svg')
+                    };
+                }
+                
+                return { name: appId, icon: '📱', isImage: false };
+            }
+
+            function getTimerClass(timerText) {
+                const parts = timerText.split(':');
+                if (parts.length === 2) {
+                    const minutes = parseInt(parts[0], 10);
+                    const seconds = parseInt(parts[1], 10);
+                    const totalSeconds = minutes * 60 + seconds;
+                    
+                    if (totalSeconds <= 5 * 60) { // Last 5 minutes
+                        return 'critical';
+                    } else if (totalSeconds <= 15 * 60) { // Last 15 minutes
+                        return 'warning';
+                    }
+                }
+                return '';
+            }
+
+            // Glass effect parameter handling
             const params = new URLSearchParams(window.location.search);
             if (params.get('glass') === 'true') {
                 document.body.classList.add('has-glass');
+                console.log('[Assessment Header] Liquid glass mode enabled');
             }
         </script>
     </body>

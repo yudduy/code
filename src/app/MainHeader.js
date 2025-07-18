@@ -2,7 +2,13 @@ import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
 
 export class MainHeader extends LitElement {
     static properties = {
-        isSessionActive: { type: Boolean, state: true },
+        focusedAppId: { type: String },
+        appSignatures: { type: Object, state: true },
+        isAssessmentMode: { type: Boolean, state: true },
+        timerDisplay: { type: String },
+        wordCount: { type: Number },
+        assessmentActive: { type: Boolean, state: true },
+        assessmentState: { type: String },
     };
 
     static styles = css`
@@ -99,13 +105,17 @@ export class MainHeader extends LitElement {
         }
 
         .header {
-            width: 100%;
-            height: 47px;
-            padding: 2px 10px 2px 13px;
+            width: calc(100% - 16px);
+            height: 52px;
+            margin: 8px;
+            padding: 8px 16px;
             background: transparent;
             overflow: hidden;
             border-radius: 9000px;
-            /* backdrop-filter: blur(1px); */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             justify-content: space-between;
             align-items: center;
             display: inline-flex;
@@ -119,7 +129,7 @@ export class MainHeader extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: transparent;
             border-radius: 9000px;
             z-index: -1;
         }
@@ -140,14 +150,14 @@ export class MainHeader extends LitElement {
         }
 
         .listen-button {
-            height: 26px;
-            padding: 0 13px;
+            height: 32px;
+            padding: 0 16px;
             background: transparent;
             border-radius: 9000px;
             justify-content: center;
-            width: 78px;
+            width: 92px;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             display: flex;
             border: none;
             cursor: pointer;
@@ -170,7 +180,7 @@ export class MainHeader extends LitElement {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 9000px;
             z-index: -1;
             transition: background 0.15s ease;
@@ -192,14 +202,14 @@ export class MainHeader extends LitElement {
         }
 
         .header-actions {
-            height: 26px;
+            height: 32px;
             box-sizing: border-box;
             justify-content: flex-start;
             align-items: center;
-            gap: 9px;
+            gap: 10px;
             display: flex;
-            padding: 0 8px;
-            border-radius: 6px;
+            padding: 0 10px;
+            border-radius: 8px;
             transition: background 0.15s ease;
         }
 
@@ -232,7 +242,7 @@ export class MainHeader extends LitElement {
 
         .action-text-content {
             color: white;
-            font-size: 12px;
+            font-size: 11px;
             font-family: 'Helvetica Neue', sans-serif;
             font-weight: 500; /* Medium */
             word-wrap: break-word;
@@ -293,6 +303,174 @@ export class MainHeader extends LitElement {
             height: 16px;
         }
 
+        .focused-app-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.15s ease;
+        }
+
+        .focused-app-indicator:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .focused-app-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            overflow: hidden;
+        }
+
+        .focused-app-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 2px;
+        }
+
+        .focused-app-name {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        /* Assessment mode styles */
+        .assessment-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 4px;
+            gap: 8px;
+        }
+
+        .assessment-timer {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 10px;
+            font-weight: 600;
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: transparent;
+            padding: 4px 8px;
+            border-radius: 3px;
+            min-width: 50px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .assessment-timer.warning {
+            color: #ff9500;
+            border-color: rgba(255, 149, 0, 0.3);
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .assessment-timer.critical {
+            color: #ff3b30;
+            border-color: rgba(255, 59, 48, 0.3);
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .stop-button {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+            min-width: 24px;
+            height: 24px;
+        }
+
+        .stop-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .stop-button:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .word-counter {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            font-weight: 500;
+            background: transparent;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .word-counter.active {
+            color: #007aff;
+            border-color: rgba(0, 122, 255, 0.3);
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .focused-app-simple {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 24px;
+            justify-content: center;
+        }
+
+        .focused-app-simple .focused-app-icon {
+            width: 12px;
+            height: 12px;
+            font-size: 8px;
+        }
+
+        .focused-app-simple .focused-app-name {
+            display: none;
+        }
+
+        .settings-button-simple {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            padding: 0;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            position: relative;
+        }
+
+        .settings-button-simple:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-button-simple svg {
+            width: 12px;
+            height: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
         /* ────────────────[ GLASS BYPASS ]─────────────── */
         :host-context(body.has-glass) .header,
         :host-context(body.has-glass) .listen-button,
@@ -350,10 +528,26 @@ export class MainHeader extends LitElement {
         this.wasJustDragged = false;
         this.isVisible = true;
         this.isAnimating = false;
+        
+        // Assessment mode defaults
+        this.focusedAppId = null;
+        this.appSignatures = {};
+        this.isAssessmentMode = false;
+        this.timerDisplay = '90:00';
+        this.wordCount = 0;
+        this.assessmentActive = false;
+        this.assessmentState = null;
         this.hasSlidIn = false;
         this.settingsHideTimer = null;
-        this.isSessionActive = false;
+        this.appSignatures = {};
         this.animationEndTimer = null;
+        
+        // Assessment mode properties
+        this.isAssessmentMode = false;
+        this.timerDisplay = '90:00';
+        this.wordCount = 0;
+        this.assessmentActive = false;
+        
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
@@ -362,8 +556,11 @@ export class MainHeader extends LitElement {
     async handleMouseDown(e) {
         e.preventDefault();
 
-        const { ipcRenderer } = window.require('electron');
-        const initialPosition = await ipcRenderer.invoke('get-header-position');
+        if (!window.electronAPI) {
+            console.warn('[MainHeader] ElectronAPI not available for drag operation');
+            return;
+        }
+        const initialPosition = await window.electronAPI.getHeaderPosition();
 
         this.dragState = {
             initialMouseX: e.screenX,
@@ -390,8 +587,9 @@ export class MainHeader extends LitElement {
         const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
         const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
 
-        const { ipcRenderer } = window.require('electron');
-        ipcRenderer.invoke('move-header-to', newWindowX, newWindowY);
+        if (window.electronAPI) {
+            window.electronAPI.moveHeaderTo(newWindowX, newWindowY);
+        }
     }
 
     handleMouseUp(e) {
@@ -468,17 +666,11 @@ export class MainHeader extends LitElement {
             this.classList.remove('hiding');
             this.classList.add('hidden');
             
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                ipcRenderer.send('header-animation-complete', 'hidden');
-            }
+            // Animation complete events are handled by backend
         } else if (this.classList.contains('showing')) {
             this.classList.remove('showing');
             
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                ipcRenderer.send('header-animation-complete', 'visible');
-            }
+            // Animation complete events are handled by backend
         } else if (this.classList.contains('sliding-in')) {
             this.classList.remove('sliding-in');
             this.hasSlidIn = true;
@@ -495,12 +687,23 @@ export class MainHeader extends LitElement {
         super.connectedCallback();
         this.addEventListener('animationend', this.handleAnimationEnd);
 
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            this._sessionStateListener = (event, { isActive }) => {
-                this.isSessionActive = isActive;
-            };
-            ipcRenderer.on('session-state-changed', this._sessionStateListener);
+        // Load app signatures from the centralized configuration
+        this.loadAppSignatures();
+
+        // Set up focus change listener using the new electronAPI (telemetry feature)
+        // This is completely optional and doesn't interfere with existing functionality
+        try {
+            if (window.electronAPI && window.electronAPI.onFocusChange) {
+                window.electronAPI.onFocusChange((event, focusEvent) => {
+                    if (focusEvent && focusEvent.appId) {
+                        this.focusedAppId = focusEvent.appId;
+                        this.requestUpdate();
+                    }
+                });
+            }
+        } catch (error) {
+            // Silently ignore any issues with focus tracking - it's optional
+            console.debug('[MainHeader] Focus tracking unavailable:', error.message);
         }
     }
 
@@ -513,10 +716,27 @@ export class MainHeader extends LitElement {
             this.animationEndTimer = null;
         }
         
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            if (this._sessionStateListener) {
-                ipcRenderer.removeListener('session-state-changed', this._sessionStateListener);
+        // Remove focus change listener (telemetry feature)
+        try {
+            if (window.electronAPI && window.electronAPI.removeFocusChangeListener) {
+                window.electronAPI.removeFocusChangeListener();
+            }
+        } catch (error) {
+            // Silently ignore any cleanup issues
+            console.debug('[MainHeader] Focus tracking cleanup:', error.message);
+        }
+        
+        // No additional cleanup needed for appSignatures
+    }
+
+    async loadAppSignatures() {
+        if (window.electronAPI) {
+            try {
+                this.appSignatures = await window.electronAPI.getAppSignatures();
+                console.log('[MainHeader] App signatures loaded:', Object.keys(this.appSignatures).length, 'applications');
+            } catch (error) {
+                console.warn('[MainHeader] Failed to load app signatures:', error.message);
+                this.appSignatures = {};
             }
         }
     }
@@ -525,22 +745,29 @@ export class MainHeader extends LitElement {
         if (this.wasJustDragged) {
             return;
         }
-        if (window.require) {
-            window.require('electron').ipcRenderer.invoke(channel, ...args);
+        if (window.electronAPI) {
+            // Map the channel to the appropriate electronAPI method
+            switch (channel) {
+                case 'toggle-feature':
+                    return window.electronAPI.toggleFeature(args[0]);
+                case 'toggle-all-windows-visibility':
+                    return window.electronAPI.toggleAllWindowsVisibility();
+                default:
+                    console.warn('[MainHeader] Unknown channel:', channel);
+            }
         }
     }
 
     showWindow(name, element) {
         if (this.wasJustDragged) return;
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
+        if (window.electronAPI) {
             console.log(`[MainHeader] showWindow('${name}') called at ${Date.now()}`);
             
-            ipcRenderer.send('cancel-hide-window', name);
+            window.electronAPI.cancelHideWindow(name);
 
             if (name === 'settings' && element) {
                 const rect = element.getBoundingClientRect();
-                ipcRenderer.send('show-window', {
+                window.electronAPI.showWindow({
                     name: 'settings',
                     bounds: {
                         x: rect.left,
@@ -550,16 +777,16 @@ export class MainHeader extends LitElement {
                     }
                 });
             } else {
-                ipcRenderer.send('show-window', name);
+                window.electronAPI.showWindow(name);
             }
         }
     }
 
     hideWindow(name) {
         if (this.wasJustDragged) return;
-        if (window.require) {
+        if (window.electronAPI) {
             console.log(`[MainHeader] hideWindow('${name}') called at ${Date.now()}`);
-            window.require('electron').ipcRenderer.send('hide-window', name);
+            window.electronAPI.hideWindow(name);
         }
     }
 
@@ -567,33 +794,165 @@ export class MainHeader extends LitElement {
 
     }
 
+    getAppDisplayInfo(appId) {
+        if (!appId || typeof appId !== 'string') return null;
+        
+        try {
+            // Look up the appId in the centralized appSignatures
+            const appInfo = this.appSignatures[appId];
+            if (appInfo && appInfo.displayName && appInfo.icon) {
+                return { 
+                    name: appInfo.displayName, 
+                    icon: appInfo.icon,
+                    isImage: appInfo.icon.includes('.png') || appInfo.icon.includes('.jpg') || appInfo.icon.includes('.svg')
+                };
+            }
+            
+            // Return sensible default if not found
+            return { name: appId, icon: '📱', isImage: false };
+        } catch (error) {
+            console.debug('[MainHeader] Error in getAppDisplayInfo:', error.message);
+            return { name: 'Unknown', icon: '📱', isImage: false };
+        }
+    }
+
+    /**
+     * Enable assessment mode with timer and word counter
+     * @param {string} initialTimer - Initial timer display (e.g., "90:00")
+     */
+    enableAssessmentMode(initialTimer = '90:00') {
+        this.isAssessmentMode = true;
+        this.assessmentActive = true;
+        this.timerDisplay = initialTimer;
+        this.wordCount = 0;
+        console.log('[MainHeader] Assessment mode enabled');
+    }
+
+    /**
+     * Disable assessment mode
+     */
+    disableAssessmentMode() {
+        this.isAssessmentMode = false;
+        this.assessmentActive = false;
+        this.timerDisplay = '90:00';
+        this.wordCount = 0;
+        console.log('[MainHeader] Assessment mode disabled');
+    }
+
+    /**
+     * Update the timer display
+     * @param {string} timerText - Timer text to display
+     */
+    updateTimer(timerText) {
+        this.timerDisplay = timerText;
+    }
+
+    /**
+     * Update the word counter
+     * @param {number} count - Current word count
+     */
+    updateWordCount(count) {
+        this.wordCount = count;
+    }
+
+    /**
+     * Handle stop button click
+     */
+    handleStopAssessment() {
+        this.dispatchEvent(new CustomEvent('stop-assessment', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    /**
+     * Get timer class based on remaining time
+     * @returns {string} CSS class for timer styling
+     */
+    getTimerClass() {
+        const parts = this.timerDisplay.split(':');
+        if (parts.length === 2) {
+            const minutes = parseInt(parts[0], 10);
+            const seconds = parseInt(parts[1], 10);
+            const totalSeconds = minutes * 60 + seconds;
+            
+            if (totalSeconds <= 5 * 60) { // Last 5 minutes
+                return 'critical';
+            } else if (totalSeconds <= 15 * 60) { // Last 15 minutes
+                return 'warning';
+            }
+        }
+        return '';
+    }
+
     render() {
+        // Hide header completely unless in assessment mode
+        if (this.assessmentState !== 'ASSESSMENT_IN_PROGRESS') {
+            return html`<div style="display: none;"></div>`;
+        }
+        
+        if (this.isAssessmentMode || this.assessmentState === 'ASSESSMENT_IN_PROGRESS') {
+            // Assessment mode layout: [Focus Icon] [Timer] [Stop] [Word Counter] [Settings]
+            return html`
+                <div class="header" @mousedown=${this.handleMouseDown}>
+                    <div class="assessment-header">
+                        <!-- Focus Icon -->
+                        ${(() => {
+                            if (this.focusedAppId) {
+                                const appInfo = this.getAppDisplayInfo(this.focusedAppId);
+                                return html`
+                                    <div class="focused-app-simple" title="Currently focused: ${appInfo.name}">
+                                        <div class="focused-app-icon">
+                                            ${appInfo.isImage 
+                                                ? html`<img src="${appInfo.icon}" alt="${appInfo.name}" />` 
+                                                : appInfo.icon
+                                            }
+                                        </div>
+                                        <div class="focused-app-name">${appInfo.name}</div>
+                                    </div>
+                                `;
+                            }
+                            return html`
+                                <div class="focused-app-simple" title="No app focused">
+                                    <div class="focused-app-icon">⚪</div>
+                                </div>
+                            `;
+                        })()}
+
+                        <!-- Timer -->
+                        <div class="assessment-timer ${this.getTimerClass()}" title="Time remaining">
+                            ${this.timerDisplay}
+                        </div>
+
+                        <!-- Stop Button -->
+                        <button class="stop-button" @click=${this.handleStopAssessment} title="Stop assessment">
+                            Stop
+                        </button>
+
+                        <!-- Word Counter -->
+                        <div class="word-counter ${this.wordCount > 0 ? 'active' : ''}" title="Current prompt words">
+                            ${this.wordCount}w
+                        </div>
+
+                        <!-- Settings Button -->
+                        <button 
+                            class="settings-button-simple"
+                            @mouseenter=${(e) => this.showWindow('settings', e.currentTarget)}
+                            @mouseleave=${() => this.hideWindow('settings')}
+                            title="Settings"
+                        >
+                            <svg width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8.0013 3.16406C7.82449 3.16406 7.65492 3.2343 7.5299 3.35932C7.40487 3.48435 7.33464 3.65392 7.33464 3.83073C7.33464 4.00754 7.40487 4.17711 7.5299 4.30213C7.65492 4.42716 7.82449 4.4974 8.0013 4.4974C8.17811 4.4974 8.34768 4.42716 8.47271 4.30213C8.59773 4.17711 8.66797 4.00754 8.66797 3.83073C8.66797 3.65392 8.59773 3.48435 8.47271 3.35932C8.34768 3.2343 8.17811 3.16406 8.0013 3.16406ZM8.0013 7.83073C7.82449 7.83073 7.65492 7.90097 7.5299 8.02599C7.40487 8.15102 7.33464 8.32058 7.33464 8.4974C7.33464 8.67421 7.40487 8.84378 7.5299 8.9688C7.65492 9.09382 7.82449 9.16406 8.0013 9.16406C8.17811 9.16406 8.34768 9.09382 8.47271 8.9688C8.59773 8.84378 8.66797 8.67421 8.66797 8.4974C8.66797 8.32058 8.59773 8.15102 8.47271 8.02599C8.34768 7.90097 8.17811 7.83073 8.0013 7.83073ZM8.0013 12.4974C7.82449 12.4974 7.65492 12.5676 7.5299 12.6927C7.40487 12.8177 7.33464 12.9873 7.33464 13.1641C7.33464 13.3409 7.40487 13.5104 7.5299 13.6355C7.65492 13.7605 7.82449 13.8307 8.0013 13.8307C8.17811 13.8307 8.34768 13.7605 8.47271 13.6355C8.59773 13.5104 8.66797 13.3409 8.66797 13.1641C8.66797 12.9873 8.59773 12.8177 8.47271 12.6927C8.34768 12.5676 8.17811 12.4974 8.0013 12.4974Z" fill="white" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Default mode layout (original)
         return html`
             <div class="header" @mousedown=${this.handleMouseDown}>
-                <button 
-                    class="listen-button ${this.isSessionActive ? 'active' : ''}"
-                    @click=${() => this.invoke(this.isSessionActive ? 'close-session' : 'toggle-feature', 'listen')}
-                >
-                    <div class="action-text">
-                        <div class="action-text-content">${this.isSessionActive ? 'Stop' : 'Listen'}</div>
-                    </div>
-                    <div class="listen-icon">
-                        ${this.isSessionActive
-                            ? html`
-                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect width="9" height="9" rx="1" fill="white"/>
-                                </svg>
-
-                            `
-                            : html`
-                                <svg width="12" height="11" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M1.69922 2.7515C1.69922 2.37153 2.00725 2.0635 2.38722 2.0635H2.73122C3.11119 2.0635 3.41922 2.37153 3.41922 2.7515V8.2555C3.41922 8.63547 3.11119 8.9435 2.73122 8.9435H2.38722C2.00725 8.9435 1.69922 8.63547 1.69922 8.2555V2.7515Z" fill="white"/>
-                                    <path d="M5.13922 1.3755C5.13922 0.995528 5.44725 0.6875 5.82722 0.6875H6.17122C6.55119 0.6875 6.85922 0.995528 6.85922 1.3755V9.6315C6.85922 10.0115 6.55119 10.3195 6.17122 10.3195H5.82722C5.44725 10.3195 5.13922 10.0115 5.13922 9.6315V1.3755Z" fill="white"/>
-                                    <path d="M8.57922 3.0955C8.57922 2.71553 8.88725 2.4075 9.26722 2.4075H9.61122C9.99119 2.4075 10.2992 2.71553 10.2992 3.0955V7.9115C10.2992 8.29147 9.99119 8.5995 9.61122 8.5995H9.26722C8.88725 8.5995 8.57922 8.29147 8.57922 7.9115V3.0955Z" fill="white"/>
-                                </svg>
-                            `}
-                    </div>
-                </button>
 
                 <div class="header-actions ask-action" @click=${() => this.invoke('toggle-feature', 'ask')}>
                     <div class="action-text">
@@ -609,6 +968,26 @@ export class MainHeader extends LitElement {
                         </div>
                     </div>
                 </div>
+
+                ${(() => {
+                    if (this.focusedAppId) {
+                        const appInfo = this.getAppDisplayInfo(this.focusedAppId);
+                        return html`
+                            <div class="focused-app-indicator" title="Currently focused: ${appInfo.name}">
+                                <div class="focused-app-icon">
+                                    ${appInfo.isImage 
+                                        ? html`<img src="${appInfo.icon}" alt="${appInfo.name}" />` 
+                                        : appInfo.icon
+                                    }
+                                </div>
+                                <div class="focused-app-name">
+                                    ${appInfo.name}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    return '';
+                })()}
 
                 <div class="header-actions" @click=${() => this.invoke('toggle-all-windows-visibility')}>
                     <div class="action-text">

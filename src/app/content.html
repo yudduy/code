@@ -81,7 +81,7 @@
             }
 
             body {
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif;
             }
 
             * {
@@ -228,8 +228,6 @@
         </style>
     </head>
     <body>
-        <script src="../assets/marked-4.3.0.min.js"></script>
-        
         <script type="module" src="../../public/build/content.js"></script>
 
         <pickle-glass-app id="pickle-glass"></pickle-glass-app>
@@ -239,65 +237,23 @@
                 const app = document.getElementById('pickle-glass');
                 let animationTimeout = null;
 
-                if (window.require) {
-                    const { ipcRenderer } = window.require('electron');
+                if (window.electronAPI) {
+                    // Note: Window animation IPC events would need to be added to preload.js if needed
+                    // These are legacy animation events that may not be needed for assessment mode
                     
-                    ipcRenderer.on('window-show-animation', () => {
-                        console.log('Starting window show animation');
-                        app.classList.remove('window-hidden', 'window-sliding-up', 'settings-window-hide');
-                        app.classList.add('window-sliding-down');
-                        
-                        if (animationTimeout) clearTimeout(animationTimeout);
-                        animationTimeout = setTimeout(() => {
-                            app.classList.remove('window-sliding-down');
-                        }, 120);
-                    });
+                    // window.electronAPI.onWindowShowAnimation(() => {
+                    //     console.log('Starting window show animation');
+                    //     app.classList.remove('window-hidden', 'window-sliding-up', 'settings-window-hide');
+                    //     app.classList.add('window-sliding-down');
+                    //     
+                    //     if (animationTimeout) clearTimeout(animationTimeout);
+                    //     animationTimeout = setTimeout(() => {
+                    //         app.classList.remove('window-sliding-down');
+                    //     }, 120);
+                    // });
                     
-                    ipcRenderer.on('window-hide-animation', () => {
-                        console.log('Starting window hide animation');
-                        app.classList.remove('window-sliding-down', 'settings-window-show');
-                        app.classList.add('window-sliding-up');
-                        
-                        if (animationTimeout) clearTimeout(animationTimeout);
-                        animationTimeout = setTimeout(() => {
-                            app.classList.remove('window-sliding-up');
-                            app.classList.add('window-hidden');
-                        }, 100);
-                    });
-                    
-                    ipcRenderer.on('settings-window-hide-animation', () => {
-                        console.log('Starting settings window hide animation');
-                        app.classList.remove('window-sliding-down', 'settings-window-show');
-                        app.classList.add('settings-window-hide');
-                        
-                        if (animationTimeout) clearTimeout(animationTimeout);
-                        animationTimeout = setTimeout(() => {
-                            app.classList.remove('settings-window-hide');
-                            app.classList.add('window-hidden');
-                        }, 100);
-                    });
-
-                    ipcRenderer.on('listen-window-move-to-center', () => {
-                        console.log('Moving listen window to center');
-                        app.classList.add('listen-window-moving');
-                        app.classList.remove('listen-window-left');
-                        app.classList.add('listen-window-center');
-                        
-                        setTimeout(() => {
-                            app.classList.remove('listen-window-moving');
-                        }, 350);
-                    });
-
-                    ipcRenderer.on('listen-window-move-to-left', () => {
-                        console.log('Moving listen window to left');
-                        app.classList.add('listen-window-moving');
-                        app.classList.remove('listen-window-center');
-                        app.classList.add('listen-window-left');
-                        
-                        setTimeout(() => {
-                            app.classList.remove('listen-window-moving');
-                        }, 350);
-                    });
+                    // Similar pattern for other window animation events...
+                    console.log('[Content] electronAPI available, but legacy window animations disabled for assessment mode');
                 }
             });
         </script>

@@ -668,15 +668,15 @@ export class AskView extends LitElement {
     async loadLibraries() {
         try {
             if (!window.marked) {
-                await this.loadScript('../../assets/marked-4.3.0.min.js');
+                await this.loadScript('../assets/marked-4.3.0.min.js');
             }
 
             if (!window.hljs) {
-                await this.loadScript('../../assets/highlight-11.9.0.min.js');
+                await this.loadScript('../assets/highlight-11.9.0.min.js');
             }
 
             if (!window.DOMPurify) {
-                await this.loadScript('../../assets/dompurify-3.0.7.min.js');
+                await this.loadScript('../assets/dompurify-3.0.7.min.js');
             }
 
             this.marked = window.marked;
@@ -740,17 +740,15 @@ export class AskView extends LitElement {
     handleWindowBlur() {
         if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
             // If there's no active content, ask the main process to close this window.
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                ipcRenderer.invoke('close-ask-window-if-empty');
+            if (window.electronAPI) {
+                window.electronAPI.closeAskWindowIfEmpty();
             }
         }
     }
 
     closeIfNoContent() {
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('force-close-window', 'ask');
+        if (window.electronAPI) {
+            window.electronAPI.forceCloseWindow('ask');
         }
     }
 
@@ -830,17 +828,16 @@ export class AskView extends LitElement {
             this.processAssistantQuestion(question);
         };
 
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.on('ask-global-send', this.handleGlobalSendRequest);
-            ipcRenderer.on('toggle-text-input', this.handleToggleTextInput);
-            ipcRenderer.on('receive-question-from-assistant', this.handleQuestionFromAssistant);
-            ipcRenderer.on('hide-text-input', () => {
+        if (window.electronAPI) {
+            window.electronAPI.onAskGlobalSend(this.handleGlobalSendRequest);
+            window.electronAPI.onToggleTextInput(this.handleToggleTextInput);
+            window.electronAPI.onQuestionFromAssistant(this.handleQuestionFromAssistant);
+            window.electronAPI.onHideTextInput(() => {
                 console.log('📤 Hide text input signal received');
                 this.showTextInput = false;
                 this.requestUpdate();
             });
-            ipcRenderer.on('clear-ask-response', () => {
+            window.electronAPI.onClearAskResponse(() => {
                 console.log('📤 Clear response signal received');
                 this.currentResponse = '';
                 this.isStreaming = false;
@@ -848,21 +845,17 @@ export class AskView extends LitElement {
                 this.headerText = 'AI Response';
                 this.requestUpdate();
             });
-            ipcRenderer.on('window-hide-animation', () => {
+            window.electronAPI.onWindowHideAnimation(() => {
                 console.log('📤 Ask window hiding - clearing response content');
                 setTimeout(() => {
                     this.clearResponseContent();
                 }, 250);
             });
-            ipcRenderer.on('window-blur', this.handleWindowBlur);
-            ipcRenderer.on('window-did-show', () => {
-                if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
-                    this.focusTextInput();
-                }
-            });
-
-            ipcRenderer.on('ask-response-chunk', this.handleStreamChunk);
-            ipcRenderer.on('ask-response-stream-end', this.handleStreamEnd);
+            window.electronAPI.onWindowBlur(this.handleWindowBlur);
+            // Note: window-did-show event needs to be added to preload if used
+            
+            window.electronAPI.onAskResponseChunk(this.handleStreamChunk);
+            window.electronAPI.onAskResponseStreamEnd(this.handleStreamEnd);
             console.log('✅ AskView: IPC 이벤트 리스너 등록 완료');
         }
     }
@@ -890,17 +883,8 @@ export class AskView extends LitElement {
 
         Object.values(this.lineCopyTimeouts).forEach(timeout => clearTimeout(timeout));
 
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.removeListener('ask-global-send', this.handleGlobalSendRequest);
-            ipcRenderer.removeListener('toggle-text-input', this.handleToggleTextInput);
-            ipcRenderer.removeListener('clear-ask-response', () => {});
-            ipcRenderer.removeListener('hide-text-input', () => {});
-            ipcRenderer.removeListener('window-hide-animation', () => {});
-            ipcRenderer.removeListener('window-blur', this.handleWindowBlur);
-
-            ipcRenderer.removeListener('ask-response-chunk', this.handleStreamChunk);
-            ipcRenderer.removeListener('ask-response-stream-end', this.handleStreamEnd);
+        if (window.electronAPI) {
+            window.electronAPI.removeAllAskListeners();
             console.log('✅ AskView: IPC 이벤트 리스너 제거 완료');
         }
     }
@@ -1053,9 +1037,8 @@ export class AskView extends LitElement {
     }
 
     requestWindowResize(targetHeight) {
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('adjust-window-height', targetHeight);
+        if (window.electronAPI) {
+            window.electronAPI.adjustWindowHeight(targetHeight);
         }
     }
 
@@ -1096,9 +1079,8 @@ export class AskView extends LitElement {
     }
 
     closeResponsePanel() {
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('force-close-window', 'ask');
+        if (window.electronAPI) {
+            window.electronAPI.forceCloseWindow('ask');
         }
     }
 
@@ -1151,9 +1133,8 @@ export class AskView extends LitElement {
         this.requestUpdate();
         this.renderContent();
 
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('ask:sendMessage', question).catch(error => {
+        if (window.electronAPI) {
+            window.electronAPI.sendAskMessage(question).catch(error => {
                 console.error('Error processing assistant question:', error);
                 this.isLoading = false;
                 this.isStreaming = false;
@@ -1250,9 +1231,8 @@ export class AskView extends LitElement {
         this.requestUpdate();
         this.renderContent();
 
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('ask:sendMessage', text).catch(error => {
+        if (window.electronAPI) {
+            window.electronAPI.sendAskMessage(text).catch(error => {
                 console.error('Error sending text:', error);
                 this.isLoading = false;
                 this.isStreaming = false;
@@ -1409,7 +1389,7 @@ export class AskView extends LitElement {
 
     // Dynamically resize the BrowserWindow to fit current content
     adjustWindowHeight() {
-        if (!window.require) return;
+        if (!window.electronAPI) return;
 
         this.updateComplete.then(() => {
             const headerEl   = this.shadowRoot.querySelector('.response-header');
@@ -1426,8 +1406,7 @@ export class AskView extends LitElement {
 
             const targetHeight = Math.min(700, idealHeight);
 
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('adjust-window-height', targetHeight);
+            window.electronAPI.adjustWindowHeight(targetHeight);
 
         }).catch(err => console.error('AskView adjustWindowHeight error:', err));
     }

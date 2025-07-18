@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+// Note: Using window.electronAPI for secure IPC communication
 
 // ---------------------------
 // Constants & Globals
@@ -7,8 +7,10 @@ const SAMPLE_RATE = 24000;
 const AUDIO_CHUNK_DURATION = 0.1;
 const BUFFER_SIZE = 4096;
 
-const isLinux = process.platform === 'linux';
-const isMacOS = process.platform === 'darwin';
+// Platform detection that works in renderer process with context isolation
+const platform = window.electronAPI?.getPlatform() || navigator.platform || 'unknown';
+const isLinux = platform.includes('linux') || platform.includes('Linux');
+const isMacOS = platform.includes('darwin') || platform.includes('Darwin') || platform.includes('Mac');
 
 let mediaStream = null;
 let micMediaStream = null;
@@ -22,6 +24,10 @@ let lastScreenshotBase64 = null;
 
 let systemAudioBuffer = [];
 const MAX_SYSTEM_BUFFER_SIZE = 10;
+
+// Telemetry event queue
+let telemetryEventQueue = [];
+let currentSessionId = null;
 
 // ---------------------------
 // Utility helpers (exact from renderer.js)
@@ -204,19 +210,21 @@ class SimpleAEC {
 let aecProcessor = new SimpleAEC();
 
 // System audio data handler
-ipcRenderer.on('system-audio-data', (event, { data }) => {
-    systemAudioBuffer.push({
-        data: data,
-        timestamp: Date.now(),
+if (window.electronAPI && window.electronAPI.onSystemAudioData) {
+    window.electronAPI.onSystemAudioData((event, { data }) => {
+        systemAudioBuffer.push({
+            data: data,
+            timestamp: Date.now(),
+        });
+
+        // 오래된 데이터 제거
+        if (systemAudioBuffer.length > MAX_SYSTEM_BUFFER_SIZE) {
+            systemAudioBuffer = systemAudioBuffer.slice(-MAX_SYSTEM_BUFFER_SIZE);
+        }
+
+        console.log('📥 Received system audio for AEC reference');
     });
-
-    // 오래된 데이터 제거
-    if (systemAudioBuffer.length > MAX_SYSTEM_BUFFER_SIZE) {
-        systemAudioBuffer = systemAudioBuffer.slice(-MAX_SYSTEM_BUFFER_SIZE);
-    }
-
-    console.log('📥 Received system audio for AEC reference');
-});
+}
 
 // ---------------------------
 // Complete token tracker (exact from renderer.js)
@@ -336,10 +344,12 @@ function setupMicProcessing(micStream) {
             const pcmData16 = convertFloat32ToInt16(processedChunk);
             const base64Data = arrayBufferToBase64(pcmData16.buffer);
 
-            await ipcRenderer.invoke('send-audio-content', {
-                data: base64Data,
-                mimeType: 'audio/pcm;rate=24000',
-            });
+            if (window.electronAPI && window.electronAPI.sendAudioContent) {
+                await window.electronAPI.sendAudioContent({
+                    data: base64Data,
+                    mimeType: 'audio/pcm;rate=24000',
+                });
+            }
         }
     };
 
@@ -369,10 +379,12 @@ function setupLinuxMicProcessing(micStream) {
             const pcmData16 = convertFloat32ToInt16(chunk);
             const base64Data = arrayBufferToBase64(pcmData16.buffer);
 
-            await ipcRenderer.invoke('send-audio-content', {
-                data: base64Data,
-                mimeType: 'audio/pcm;rate=24000',
-            });
+            if (window.electronAPI && window.electronAPI.sendAudioContent) {
+                await window.electronAPI.sendAudioContent({
+                    data: base64Data,
+                    mimeType: 'audio/pcm;rate=24000',
+                });
+            }
         }
     };
 
@@ -403,10 +415,12 @@ function setupSystemAudioProcessing(systemStream) {
             const base64Data = arrayBufferToBase64(pcmData16.buffer);
 
             try {
-                await ipcRenderer.invoke('send-system-audio-content', {
-                    data: base64Data,
-                    mimeType: 'audio/pcm;rate=24000',
-                });
+                if (window.electronAPI && window.electronAPI.sendSystemAudioContent) {
+                    await window.electronAPI.sendSystemAudioContent({
+                        data: base64Data,
+                        mimeType: 'audio/pcm;rate=24000',
+                    });
+                }
             } catch (error) {
                 console.error('Failed to send system audio:', error);
             }
@@ -433,9 +447,9 @@ async function captureScreenshot(imageQuality = 'medium', isManual = false) {
 
     try {
         // Request screenshot from main process
-        const result = await ipcRenderer.invoke('capture-screenshot', {
+        const result = window.electronAPI ? await window.electronAPI.captureScreenshot({
             quality: imageQuality,
-        });
+        }) : { success: false, error: 'electronAPI not available' };
 
         if (result.success && result.base64) {
             // Store the latest screenshot
@@ -470,7 +484,7 @@ async function captureManualScreenshot(imageQuality = null) {
 async function getCurrentScreenshot() {
     try {
         // First try to get a fresh screenshot from main process
-        const result = await ipcRenderer.invoke('get-current-screenshot');
+        const result = window.electronAPI ? await window.electronAPI.getCurrentScreenshot() : { success: false, error: 'electronAPI not available' };
 
         if (result.success && result.base64) {
             console.log('📸 Got fresh screenshot from main process');
@@ -479,9 +493,9 @@ async function getCurrentScreenshot() {
 
         // If no screenshot available, capture one now
         console.log('📸 No screenshot available, capturing new one');
-        const captureResult = await ipcRenderer.invoke('capture-screenshot', {
+        const captureResult = window.electronAPI ? await window.electronAPI.captureScreenshot({
             quality: currentImageQuality,
-        });
+        }) : { success: false, error: 'electronAPI not available' };
 
         if (captureResult.success && captureResult.base64) {
             lastScreenshotBase64 = captureResult.base64;
@@ -518,13 +532,13 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             console.log('Starting macOS capture with SystemAudioDump...');
 
             // Start macOS audio capture
-            const audioResult = await ipcRenderer.invoke('start-macos-audio');
+            const audioResult = window.electronAPI ? await window.electronAPI.startMacOSAudio() : { success: false, error: 'electronAPI not available' };
             if (!audioResult.success) {
                 throw new Error('Failed to start macOS audio capture: ' + audioResult.error);
             }
 
             // Initialize screen capture in main process
-            const screenResult = await ipcRenderer.invoke('start-screen-capture');
+            const screenResult = window.electronAPI ? await window.electronAPI.startScreenCapture() : { success: false, error: 'electronAPI not available' };
             if (!screenResult.success) {
                 throw new Error('Failed to start screen capture: ' + screenResult.error);
             }
@@ -592,13 +606,13 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             console.log('Starting Windows capture with native loopback audio...');
 
             // Start screen capture in main process for screenshots
-            const screenResult = await ipcRenderer.invoke('start-screen-capture');
+            const screenResult = window.electronAPI ? await window.electronAPI.startScreenCapture() : { success: false, error: 'electronAPI not available' };
             if (!screenResult.success) {
                 throw new Error('Failed to start screen capture: ' + screenResult.error);
             }
 
             // Ensure STT sessions are initialized before starting audio capture
-            const sessionActive = await ipcRenderer.invoke('is-session-active');
+            const sessionActive = window.electronAPI ? await window.electronAPI.isSessionActive() : false;
             if (!sessionActive) {
                 throw new Error('STT sessions not initialized - please wait for initialization to complete');
             }
@@ -703,26 +717,76 @@ function stopCapture() {
     }
 
     // Stop screen capture in main process
-    ipcRenderer.invoke('stop-screen-capture').catch(err => {
-        console.error('Error stopping screen capture:', err);
-    });
+    if (window.electronAPI && window.electronAPI.stopScreenCapture) {
+        window.electronAPI.stopScreenCapture().catch(err => {
+            console.error('Error stopping screen capture:', err);
+        });
+    }
 
     // Stop macOS audio capture if running
     if (isMacOS) {
-        ipcRenderer.invoke('stop-macos-audio').catch(err => {
-            console.error('Error stopping macOS audio:', err);
-        });
+        if (window.electronAPI && window.electronAPI.stopMacOSAudio) {
+            window.electronAPI.stopMacOSAudio().catch(err => {
+                console.error('Error stopping macOS audio:', err);
+            });
+        }
+    }
+}
+
+// ---------------------------
+// Telemetry functions
+// ---------------------------
+
+// Listen for focus change events from main process
+if (window.electronAPI && window.electronAPI.onFocusChange) {
+    window.electronAPI.onFocusChange((event, focusEvent) => {
+        console.log('Received APP_FOCUS event:', focusEvent);
+        
+        // Add to telemetry queue
+        if (currentSessionId) {
+            telemetryEventQueue.push(focusEvent);
+        }
+    });
+}
+
+// Get current telemetry events
+function getTelemetryEvents() {
+    const events = [...telemetryEventQueue];
+    telemetryEventQueue = []; // Clear queue after retrieval
+    return events;
+}
+
+// Set current session ID for telemetry
+function setSessionId(sessionId) {
+    currentSessionId = sessionId;
+    
+    // Start focus detection when session starts
+    if (sessionId) {
+        if (window.electronAPI && window.electronAPI.startFocusDetector) {
+            window.electronAPI.startFocusDetector(sessionId).catch(err => {
+                console.error('Error starting focus detector:', err);
+            });
+        }
+    } else {
+        // Stop focus detection when session ends
+        if (window.electronAPI && window.electronAPI.stopFocusDetector) {
+            window.electronAPI.stopFocusDetector().catch(err => {
+                console.error('Error stopping focus detector:', err);
+            });
+        }
     }
 }
 
 // ---------------------------
 // Exports & global registration
 // ---------------------------
-module.exports = {
+export {
     startCapture,
     stopCapture,
     captureManualScreenshot,
     getCurrentScreenshot,
+    getTelemetryEvents,
+    setSessionId,
     isLinux,
     isMacOS,
 };
@@ -730,10 +794,21 @@ module.exports = {
 // Expose functions to global scope for external access (exact from renderer.js)
 if (typeof window !== 'undefined') {
     window.captureManualScreenshot = captureManualScreenshot;
-    window.listenCapture = module.exports;
+    window.listenCapture = {
+        startCapture,
+        stopCapture,
+        captureManualScreenshot,
+        getCurrentScreenshot,
+        getTelemetryEvents,
+        setSessionId,
+        isLinux,
+        isMacOS,
+    };
     window.pickleGlass = window.pickleGlass || {};
     window.pickleGlass.startCapture = startCapture;
     window.pickleGlass.stopCapture = stopCapture;
     window.pickleGlass.captureManualScreenshot = captureManualScreenshot;
     window.pickleGlass.getCurrentScreenshot = getCurrentScreenshot;
+    window.pickleGlass.getTelemetryEvents = getTelemetryEvents;
+    window.pickleGlass.setSessionId = setSessionId;
 } 

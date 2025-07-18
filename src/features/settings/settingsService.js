@@ -3,7 +3,7 @@ const Store = require('electron-store');
 const authService = require('../../common/services/authService');
 const userRepository = require('../../common/repositories/user');
 const settingsRepository = require('./repositories');
-const { getStoredApiKey, getStoredProvider, windowPool } = require('../../electron/windowManager');
+const { getStoredApiKey, getStoredProvider } = require('../../electron/windowManager');
 
 const store = new Store({
     name: 'pickle-glass-settings',
@@ -74,18 +74,26 @@ class WindowNotificationManager {
         const allWindows = BrowserWindow.getAllWindows();
         const relevantWindows = [];
 
-        allWindows.forEach(win => {
-            if (win.isDestroyed()) return;
-
-            for (const [windowName, poolWindow] of windowPool || []) {
-                if (poolWindow === win && windowTypes.includes(windowName)) {
-                    if (windowName === 'settings' || win.isVisible()) {
-                        relevantWindows.push(win);
-                    }
-                    break;
+        // Try to use AssessmentWindowManager if available
+        const assessmentWindowManager = global.assessmentWindowManager;
+        if (assessmentWindowManager) {
+            // Check each window type in the assessment manager
+            for (const windowType of windowTypes) {
+                const window = assessmentWindowManager.getWindow(windowType);
+                if (window && !window.isDestroyed() && (windowType === 'settings' || window.isVisible())) {
+                    relevantWindows.push(window);
                 }
             }
-        });
+        }
+
+        // Fallback: if no assessment manager or no relevant windows found, use all visible windows
+        if (relevantWindows.length === 0) {
+            allWindows.forEach(win => {
+                if (!win.isDestroyed() && win.isVisible()) {
+                    relevantWindows.push(win);
+                }
+            });
+        }
 
         return relevantWindows;
     }
@@ -369,11 +377,14 @@ async function updateContentProtection(enabled) {
         const settings = await getSettings();
         settings.contentProtection = enabled;
         
-        // Update content protection in main window
+        // Update content protection in assessment windows
         const { app } = require('electron');
-        const mainWindow = windowPool.get('main');
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.setContentProtection(enabled);
+        const assessmentWindowManager = global.assessmentWindowManager;
+        if (assessmentWindowManager) {
+            const headerWindow = assessmentWindowManager.getWindow('header');
+            if (headerWindow && !headerWindow.isDestroyed()) {
+                headerWindow.setContentProtection(enabled);
+            }
         }
         
         return await saveSettings(settings);

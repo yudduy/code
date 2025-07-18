@@ -85,64 +85,95 @@ class ModelStateService {
             return { success: false, error: 'API key cannot be empty.' };
         }
 
-        let validationUrl, headers;
-        const body = undefined;
+        // Create timeout controller for fetch requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            console.log(`[ModelStateService] Validation timeout for ${provider} after 15 seconds`);
+            controller.abort();
+        }, 15000); // 15 second timeout
 
-        switch (provider) {
-            case 'openai':
-                validationUrl = 'https://api.openai.com/v1/models';
-                headers = { 'Authorization': `Bearer ${key}` };
-                break;
-            case 'gemini':
-                validationUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
-                headers = {};
-                break;
-            case 'anthropic': {
-                if (!key.startsWith('sk-ant-')) {
-                    throw new Error('Invalid Anthropic key format.');
-                }
-                const response = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST",
-                    headers: {
+        try {
+            let validationUrl, headers, body, method = 'GET';
+
+            switch (provider) {
+                case 'openai':
+                    validationUrl = 'https://api.openai.com/v1/models';
+                    headers = { 'Authorization': `Bearer ${key}` };
+                    break;
+                case 'gemini':
+                    validationUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+                    headers = {};
+                    break;
+                case 'anthropic': {
+                    if (!key.startsWith('sk-ant-')) {
+                        clearTimeout(timeoutId);
+                        return { success: false, error: 'Invalid Anthropic key format. Must start with sk-ant-' };
+                    }
+                    
+                    validationUrl = 'https://api.anthropic.com/v1/messages';
+                    method = 'POST';
+                    headers = {
                         "Content-Type": "application/json",
                         "x-api-key": key,
                         "anthropic-version": "2023-06-01",
-                    },
-                    body: JSON.stringify({
+                    };
+                    body = JSON.stringify({
                         model: "claude-3-haiku-20240307",
                         max_tokens: 1,
                         messages: [{ role: "user", content: "Hi" }],
-                    }),
-                });
-
-                if (!response.ok && response.status !== 400) {
-                        const errorData = await response.json().catch(() => ({}));
-                        return { success: false, error: errorData.error?.message || `Validation failed with status: ${response.status}` };
-                    }
-                
-                    console.log(`[ModelStateService] API key for ${provider} is valid.`);
-                    this.setApiKey(provider, key);
-                    return { success: true };
+                    });
+                    break;
                 }
-            default:
-                return { success: false, error: 'Unknown provider.' };
-        }
+                default:
+                    clearTimeout(timeoutId);
+                    return { success: false, error: 'Unknown provider.' };
+            }
 
-        try {
-            const response = await fetch(validationUrl, { headers, body });
+            console.log(`[ModelStateService] Validating ${provider} API key...`);
+            console.log(`[ModelStateService] Request details: ${method} ${validationUrl}`);
+            console.log(`[ModelStateService] Headers:`, headers);
+            
+            const response = await fetch(validationUrl, { 
+                method,
+                headers, 
+                body,
+                signal: controller.signal
+            });
+            
+            console.log(`[ModelStateService] Received response: ${response.status} ${response.statusText}`);
+
+            clearTimeout(timeoutId);
+
             if (response.ok) {
                 console.log(`[ModelStateService] API key for ${provider} is valid.`);
                 this.setApiKey(provider, key);
                 return { success: true };
+            } else if (provider === 'anthropic' && response.status === 400) {
+                // For Anthropic, a 400 response with proper error structure indicates valid auth
+                console.log(`[ModelStateService] API key for ${provider} is valid (expected 400 response).`);
+                this.setApiKey(provider, key);
+                return { success: true };
             } else {
-                const errorData = await response.json().catch(() => ({}));
-                const message = errorData.error?.message || `Validation failed with status: ${response.status}`;
-                console.log(`[ModelStateService] API key for ${provider} is invalid: ${message}`);
-                return { success: false, error: message };
+                let errorMessage;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error?.message || errorData.message || `Validation failed with status: ${response.status}`;
+                } catch (jsonError) {
+                    errorMessage = `Validation failed with status: ${response.status}`;
+                }
+                console.log(`[ModelStateService] API key for ${provider} is invalid: ${errorMessage}`);
+                return { success: false, error: errorMessage };
             }
         } catch (error) {
+            clearTimeout(timeoutId);
+            
+            if (error.name === 'AbortError') {
+                console.error(`[ModelStateService] Validation timeout for ${provider}`);
+                return { success: false, error: 'Validation timed out. Please check your network connection and try again.' };
+            }
+            
             console.error(`[ModelStateService] Network error during ${provider} key validation:`, error);
-            return { success: false, error: 'A network error occurred during validation.' };
+            return { success: false, error: 'A network error occurred during validation. Please check your connection and try again.' };
         }
     }
     
@@ -289,7 +320,17 @@ class ModelStateService {
     }
     
     setupIpcHandlers() {
-        ipcMain.handle('model:validate-key', (e, { provider, key }) => this.validateApiKey(provider, key));
+        ipcMain.handle('model:validate-key', async (e, { provider, key }) => {
+            console.log(`[ModelStateService] IPC: validate-key called for provider: ${provider}, key length: ${key?.length || 0}`);
+            try {
+                const result = await this.validateApiKey(provider, key);
+                console.log(`[ModelStateService] IPC: validate-key result for ${provider}:`, result);
+                return result;
+            } catch (error) {
+                console.error(`[ModelStateService] IPC: validate-key error for ${provider}:`, error);
+                return { success: false, error: 'Internal validation error: ' + error.message };
+            }
+        });
         ipcMain.handle('model:get-all-keys', () => this.getAllApiKeys());
         ipcMain.handle('model:set-api-key', (e, { provider, key }) => this.setApiKey(provider, key));
         ipcMain.handle('model:remove-api-key', (e, { provider }) => {

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-security-policy" content="script-src 'self' 'unsafe-inline'" />
+        <title>Codexel Assessment - Ready</title>
+        <style>
+            :root {
+                --text-color: #e5e5e7;
+                --background-transparent: transparent;
+                --button-background: rgba(0, 0, 0, 0.5);
+                --button-border: rgba(255, 255, 255, 0.1);
+                --hover-background: rgba(255, 255, 255, 0.1);
+                --focus-border-color: #007aff;
+                --focus-box-shadow: rgba(0, 122, 255, 0.2);
+                --border-radius: 7px;
+                --primary-color: #007aff;
+                --primary-gradient: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+            }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: transparent;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                overflow: hidden;
+            }
+
+            * {
+                box-sizing: border-box;
+                cursor: default;
+                user-select: none;
+            }
+
+            .ready-container {
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 16px;
+                position: relative;
+                overflow: hidden;
+                opacity: 0;
+                animation: fadeIn 0.6s ease-out forwards;
+            }
+
+            @keyframes fadeIn {
+                to {
+                    opacity: 1;
+                }
+            }
+
+            .ready-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 16px;
+                padding: 1px;
+                background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: destination-out;
+                mask-composite: exclude;
+                pointer-events: none;
+            }
+
+            .ready-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 32px;
+                text-align: center;
+                animation: slideIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                opacity: 0;
+                animation-delay: 0.2s;
+            }
+
+            @keyframes slideIn {
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%);
+                }
+            }
+
+            .ready-header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .ready-logo {
+                width: 72px;
+                height: 72px;
+                background: var(--primary-gradient);
+                border-radius: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4);
+                animation: pulse 2.5s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+                0%, 100% {
+                    transform: scale(1);
+                    box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4);
+                }
+                50% {
+                    transform: scale(1.05);
+                    box-shadow: 0 16px 50px rgba(0, 122, 255, 0.5);
+                }
+            }
+
+            .ready-logo svg {
+                width: 36px;
+                height: 36px;
+                fill: white;
+            }
+
+            .ready-title {
+                font-size: 36px;
+                font-weight: 700;
+                color: white;
+                margin: 0;
+                background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .ready-subtitle {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.8);
+                margin: 0;
+                line-height: 1.5;
+                max-width: 420px;
+            }
+
+            .ready-details {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                padding: 28px;
+                background: rgba(0, 0, 0, 0.4);
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                max-width: 480px;
+                width: 100%;
+            }
+
+            .ready-detail-item {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 14px;
+                line-height: 1.4;
+            }
+
+            .detail-icon {
+                width: 24px;
+                height: 24px;
+                background: rgba(0, 122, 255, 0.2);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .detail-icon svg {
+                width: 14px;
+                height: 14px;
+                fill: var(--primary-color);
+            }
+
+            .start-button {
+                padding: 16px 32px;
+                background: transparent;
+                color: var(--primary-color);
+                border: 1px solid rgba(0, 122, 255, 0.3);
+                border-radius: var(--border-radius);
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+                position: relative;
+                overflow: hidden;
+                min-width: 160px;
+                background: rgba(0, 122, 255, 0.1);
+            }
+
+            .start-button:hover {
+                background: rgba(0, 122, 255, 0.2);
+                border-color: rgba(0, 122, 255, 0.4);
+                transform: translateY(-1px);
+                box-shadow: 0 8px 25px rgba(0, 122, 255, 0.2);
+            }
+
+            .start-button:active {
+                transform: translateY(0);
+                box-shadow: 0 4px 15px rgba(0, 122, 255, 0.1);
+            }
+
+            .start-button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+            .start-button::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s ease;
+            }
+
+            .start-button:hover::before {
+                left: 100%;
+            }
+
+            .button-content {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                position: relative;
+                z-index: 1;
+            }
+
+            .loading-spinner {
+                width: 18px;
+                height: 18px;
+                border: 2px solid rgba(0, 122, 255, 0.3);
+                border-top: 2px solid var(--primary-color);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .ready-footer {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.6);
+                text-align: center;
+                max-width: 400px;
+                line-height: 1.5;
+            }
+
+            /* Responsive design */
+            @media (max-width: 600px) {
+                .ready-content {
+                    padding: 20px;
+                    gap: 24px;
+                }
+                
+                .ready-title {
+                    font-size: 28px;
+                }
+                
+                .ready-details {
+                    padding: 24px;
+                    max-width: none;
+                }
+                
+                .start-button {
+                    padding: 14px 28px;
+                    width: 100%;
+                    max-width: 280px;
+                }
+            }
+            /* Liquid Glass Mode Styles */
+            body.has-glass .ready-container {
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            body.has-glass .ready-container::before {
+                background: none;
+            }
+
+            body.has-glass .ready-main-content {
+                background: rgba(0, 0, 0, 0.3);
+            }
+
+            body.has-glass .ready-main-content::before {
+                background: none;
+            }
+
+            body.has-glass .start-button {
+                background: rgba(0, 122, 255, 0.05);
+                border-color: rgba(0, 122, 255, 0.2);
+            }
+
+            body.has-glass .start-button:hover {
+                background: rgba(0, 122, 255, 0.1);
+                border-color: rgba(0, 122, 255, 0.3);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="ready-container">
+            <div class="ready-content">
+                <div class="ready-header">
+                    <div class="ready-logo">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    
+                    <h1 class="ready-title">Ready to Begin</h1>
+                    <p class="ready-subtitle">
+                        You're about to start your AI-collaboration assessment. 
+                        The session will last 90 minutes and track your workflow with AI tools.
+                    </p>
+                </div>
+
+                <div class="ready-details">
+                    <div class="ready-detail-item">
+                        <div class="detail-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                        </div>
+                        <span>GitHub repository will open for your coding task</span>
+                    </div>
+                    
+                    <div class="ready-detail-item">
+                        <div class="detail-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                            </svg>
+                        </div>
+                        <span>90-minute timer will start automatically</span>
+                    </div>
+                    
+                    <div class="ready-detail-item">
+                        <div class="detail-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                        </div>
+                        <span>Minimal telemetry will track your AI tool usage</span>
+                    </div>
+                </div>
+
+                <button class="start-button" id="start-button">
+                    <div class="button-content">
+                        <span id="button-text">Start Assessment</span>
+                        <div class="loading-spinner" id="loading-spinner" style="display: none;"></div>
+                    </div>
+                </button>
+
+                <div class="ready-footer">
+                    Once started, you can use any AI tools you prefer. The assessment will automatically 
+                    end after 90 minutes or when you click the stop button in the header.
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Glass effect parameter handling
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('glass') === 'true') {
+                document.body.classList.add('has-glass');
+                console.log('[Ready Window] Liquid glass mode enabled');
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const startButton = document.getElementById('start-button');
+                const buttonText = document.getElementById('button-text');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                let isLoading = false;
+
+                startButton.addEventListener('click', async () => {
+                    if (isLoading) return;
+                    
+                    isLoading = true;
+                    startButton.disabled = true;
+                    
+                    // Update button state
+                    buttonText.textContent = 'Starting...';
+                    loadingSpinner.style.display = 'block';
+                    
+                    // Animate container fade out
+                    const container = document.querySelector('.ready-container');
+                    
+                    try {
+                        // Wait a moment to show loading state
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        // Fade out
+                        container.style.transition = 'opacity 0.4s ease-out';
+                        container.style.opacity = '0';
+                        
+                        // Wait for animation then trigger IPC
+                        setTimeout(async () => {
+                            if (window.electronAPI) {
+                                await window.electronAPI.startAssessment();
+                            }
+                        }, 400);
+                        
+                    } catch (error) {
+                        console.error('Error starting assessment:', error);
+                        
+                        // Reset button state on error
+                        isLoading = false;
+                        startButton.disabled = false;
+                        buttonText.textContent = 'Start Assessment';
+                        loadingSpinner.style.display = 'none';
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>

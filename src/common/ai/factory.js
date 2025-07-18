@@ -22,10 +22,10 @@ const PROVIDERS = {
       name: 'OpenAI',
       handler: () => require("./providers/openai"),
       llmModels: [
-          { id: 'gpt-4.1', name: 'GPT-4.1' },
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano' },
       ],
       sttModels: [
-          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' }
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano' }
       ],
   },
 
@@ -33,10 +33,10 @@ const PROVIDERS = {
       name: 'OpenAI (Glass)',
       handler: () => require("./providers/openai"),
       llmModels: [
-          { id: 'gpt-4.1-glass', name: 'GPT-4.1 (glass)' },
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano' },
       ],
       sttModels: [
-          { id: 'gpt-4o-mini-transcribe-glass', name: 'GPT-4o Mini Transcribe (glass)' }
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano' }
       ],
   },
   'gemini': {
