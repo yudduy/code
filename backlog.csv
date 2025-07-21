@@ -1,0 +1,116 @@
+"Title","Description","Labels","Status"
+"Implement 60-Minute Countdown Timer in Assessment Header","Add a prominent, clearly visible countdown timer that starts at 60:00 and decreases every second during the assessment phase. Timer must be visible in the header window and automatically terminate the session when it reaches 00:00.
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** RF-04
+**Acceptance Criteria:** Timer displays in MM:SS format, updates every second, triggers auto-submission at zero","UI/UX Enhancements","Backlog"
+"Update Consent Modal with PRD-Specified Text","Replace existing consent modal content with the exact text and messaging specified in the PRD. Ensure the modal is blocking and prevents assessment start without explicit consent.
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** RF-03
+**Acceptance Criteria:** Modal uses PRD text, blocks progression without consent, clearly explains data collection","UI/UX Enhancements","Backlog"
+"Create Completion Screen with Thank You Message","Implement the final completion window that displays 'Thank you for taking the test' when assessment ends (either by manual submission or timer expiration).
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** RF-02 (Assessment Workflow)
+**Acceptance Criteria:** Displays after submission, replaces current completion window, maintains liquid glass aesthetic","UI/UX Enhancements","Backlog"
+"Add Manual 'Submit Assessment' Button","Implement a prominent 'Submit Assessment' button in the assessment header that immediately terminates the session and stops all telemetry collection.
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** RF-06
+**Acceptance Criteria:** Button terminates session immediately, stops timers, transitions to completion screen","UI/UX Enhancements","Backlog"
+"Enhance Liquid Glass Aesthetic Consistency","Review and ensure all windows maintain consistent liquid glass visual effects across macOS (with fallback vibrancy for unsupported systems).
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** RF-01
+**Acceptance Criteria:** All windows have consistent glass effects, fallbacks work properly on older macOS/other platforms","UI/UX Enhancements","Backlog"
+"Implement Silent Mocking Approach","Remove any visual indicators or notifications related to prompt detection to maintain the 'silent mocking' user experience where candidates don't see fake prompt notifications.
+
+**Epic:** UI/UX Enhancements
+**PRD requirement:** MF-01
+**Acceptance Criteria:** No prompt-related UI elements appear during assessment, candidate experience remains uninterrupted","UI/UX Enhancements","Backlog"
+"Fix Window Transition Errors (Current Branch Issue)","Resolve the existing window transition errors that are currently in progress on the fix/window-transition-error branch to ensure smooth workflow transitions.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** RF-02 (Assessment Workflow)
+**Acceptance Criteria:** All window transitions work smoothly without crashes or visual glitches","Core Functionality Updates","Backlog"
+"Implement Auto-Termination at 60 Minutes","Ensure the 60-minute timer automatically triggers session termination, stops all telemetry collection, and transitions to completion screen when timer reaches zero.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** RF-04
+**Acceptance Criteria:** Timer auto-terminates at 00:00, stops focus detection, shows completion screen","Core Functionality Updates","Backlog"
+"Verify and Optimize Focus Detection Accuracy","Test and ensure the FocusDetector correctly identifies all 17+ AI tools and applications with high accuracy during the 1-second polling interval.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** RF-05
+**Acceptance Criteria:** Focus detection works reliably, generates accurate APP_FOCUS events, handles edge cases","Core Functionality Updates","Backlog"
+"Update Assessment Workflow State Management","Refine the currentAssessmentState management to properly handle the Consent → Ready → Assessment → Completion flow with proper state transitions.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** RF-02
+**Acceptance Criteria:** State transitions work correctly, windows appear in proper sequence, no state corruption","Core Functionality Updates","Backlog"
+"Implement Manual Submission with Immediate Termination","Wire the 'Submit Assessment' button to immediately stop the countdown timer, cease focus detection, and transition to completion screen.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** RF-06
+**Acceptance Criteria:** Submission button works instantly, all telemetry stops, proper cleanup occurs","Core Functionality Updates","Backlog"
+"Disable Real Prompt Detection While Maintaining UI Flow","Modify PromptListener to not detect real prompts but maintain the component structure for potential future use without affecting the user experience.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** MF-01
+**Acceptance Criteria:** No real prompts detected, component doesn't interfere with workflow, code remains maintainable","Core Functionality Updates","Backlog"
+"Disable Telemetry Buffer Data Upload","Modify TelemetryBuffer to prevent actual data uploads to Supabase while maintaining the buffering functionality for demo purposes.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** MF-02
+**Acceptance Criteria:** No data sent to Supabase, buffer functions locally, no network calls for telemetry","Core Functionality Updates","Backlog"
+"Add Comprehensive Error Handling and Crash Prevention","Implement robust error handling throughout the application to ensure demo stability and prevent crashes during presentations.
+
+**Epic:** Core Functionality Updates
+**PRD requirement:** Success Metric (Stability)
+**Acceptance Criteria:** App handles errors gracefully, logs issues appropriately, maintains stability under various conditions","Core Functionality Updates","Backlog"
+"Create Hiring Manager Report Frontend View","Build a new frontend view/window that displays the hiring manager report with navigation and proper layout structure to showcase the three main modules.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-03
+**Acceptance Criteria:** New report window, professional layout, navigation between sections, maintains brand aesthetic","Mocked Feature Implementation","Backlog"
+"Implement Time Analysis Chart with Hardcoded Data","Create a visual chart component showing the time breakdown: Cursor (45%), Browser (35%), VS Code (15%), Terminal (5%) using the exact percentages from Appendix A.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-03, Appendix A
+**Acceptance Criteria:** Visual chart displays correct percentages, professional appearance, matches mockup specifications","Mocked Feature Implementation","Backlog"
+"Build Prompt Log & Effectiveness Scores Section","Implement the prompt log interface showing the three tools (Copilot 7.5/10, Cursor 9.0/10, Claude 8.5/10) with their sample prompts and summaries from Appendix A.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-03, MF-04, Appendix A
+**Acceptance Criteria:** Displays all three tools, correct scores, exact sample prompts, proper formatting","Mocked Feature Implementation","Backlog"
+"Add AI Analysis Engine Mock Summaries","Implement the hardcoded AI analysis text for each tool showing effectiveness summaries and behavioral insights as specified in Appendix A.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-04, Appendix A
+**Acceptance Criteria:** Exact text from Appendix A, proper formatting, professional presentation","Mocked Feature Implementation","Backlog"
+"Create Report Navigation and Layout Structure","Design and implement the overall report navigation, allowing users to view different sections of the hiring manager dashboard with smooth transitions.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-03
+**Acceptance Criteria:** Intuitive navigation, section switching, cohesive layout, professional UX","Mocked Feature Implementation","Backlog"
+"Integrate Mock Data Exactly as Specified","Ensure all hardcoded data from Appendix A is integrated exactly as written, including tool names, scores, prompts, and summaries without deviation.
+
+**Epic:** Mocked Feature Implementation
+**PRD requirement:** MF-03, MF-04, Appendix A
+**Acceptance Criteria:** Data matches Appendix A exactly, no modifications to provided content, accurate representation","Mocked Feature Implementation","Backlog"
+"Ensure Cross-Platform Build Compatibility","Verify and ensure the application builds successfully on macOS, Windows, and Linux platforms using the existing npm build scripts.
+
+**Epic:** Build & Finalization
+**PRD requirement:** RF-01 (Cross-platform), Non-functional Requirements
+**Acceptance Criteria:** Successful builds on all three platforms, no platform-specific errors, consistent functionality","Build & Finalization","Backlog"
+"Perform End-to-End Testing and Video Recording Preparation","Conduct comprehensive testing of the complete user journey from launch to completion, ensuring the demo is ready for video recording and marketing purposes.
+
+**Epic:** Build & Finalization
+**PRD requirement:** Success Metrics
+**Acceptance Criteria:** Complete user journey works flawlessly, no crashes, demo-ready stability, marketing video capability","Build & Finalization","Backlog"
+"Final QA Pass and Stability Improvements","Perform final quality assurance testing, fix any remaining bugs, optimize performance, and ensure the application meets demo presentation standards.
+
+**Epic:** Build & Finalization
+**PRD requirement:** Success Metrics (Stability)
+**Acceptance Criteria:** No critical bugs, smooth performance, presentation-ready quality, stable during extended use","Build & Finalization","Backlog"
