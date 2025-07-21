@@ -84,6 +84,7 @@ class FocusDetector {
         this.lastWindowInfo = windowInfo;
       }
     } catch (error) {
+      // This error is now primarily for unexpected issues, not permission denials.
       console.error('Error detecting active window:', error);
     }
   }

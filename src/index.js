@@ -94,6 +94,16 @@ app.on('second-instance', () => {
 
 app.whenReady().then(async () => {
     console.log('[Codexel] App ready, starting multi-window assessment application');
+
+    if (process.env.NODE_ENV !== 'test') {
+        const permissionManager = require('./main/permissionManager');
+        const hasPermission = await permissionManager.checkAndRequestScreenRecordingPermission();
+
+        if (!hasPermission) {
+            console.log('[Codexel] Screen recording permission not granted. Halting app initialization.');
+            return;
+        }
+    }
     
     try {
         // Setup IPC handlers first
