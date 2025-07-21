@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-security-policy" content="script-src 'self' 'unsafe-inline'" />
+    <title>Permission Required</title>
+    <style>
+        :root {
+            --text-color: #e5e5e7;
+            --background-transparent: transparent;
+            --button-background: rgba(0, 0, 0, 0.5);
+            --button-border: rgba(255, 255, 255, 0.1);
+            --hover-background: rgba(255, 255, 255, 0.1);
+            --focus-border-color: #9CA3AF;
+            --focus-box-shadow: rgba(156, 163, 175, 0.2);
+            --border-radius: 7px;
+            --consent-emphasis-color: #9CA3AF;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        * {
+            box-sizing: border-box;
+            cursor: default;
+            user-select: none;
+        }
+
+        .permission-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .permission-container {
+            width: 520px;
+            max-width: 90vw;
+            max-height: 90vh;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 16px;
+            padding: 40px;
+            color: var(--text-color);
+            position: relative;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            animation: slideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .permission-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .permission-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: white;
+            margin: 0 0 12px 0;
+        }
+
+        .permission-subtitle {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .permission-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .permission-section-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .permission-emphasis {
+            color: var(--consent-emphasis-color);
+            font-weight: 600;
+        }
+
+        .permission-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .permission-button {
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+            min-width: 120px;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .permission-button-primary {
+            background: rgba(156, 163, 175, 0.1);
+            color: var(--consent-emphasis-color);
+            border-color: rgba(156, 163, 175, 0.3);
+        }
+
+        .permission-button-primary:hover {
+            background: rgba(156, 163, 175, 0.2);
+            border-color: rgba(156, 163, 175, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="permission-overlay">
+        <div class="permission-container">
+            <div class="permission-header">
+                <h1 class="permission-title">Screen Recording Permission Required</h1>
+                <p class="permission-subtitle">Pickle Glass needs your permission to provide contextual AI features.</p>
+            </div>
+
+            <div class="permission-content">
+                <p class="permission-section-text">
+                    To understand the context of your work, Pickle Glass needs access to see what application is currently active. This requires <span class="permission-emphasis">Screen Recording</span> permission in macOS.
+                </p>
+                <p class="permission-section-text">
+                    Please go to <span class="permission-emphasis">System Settings > Privacy & Security > Screen Recording</span> and enable it for Pickle Glass. The application will automatically detect the change and prompt you to restart.
+                </p>
+            </div>
+
+            <div class="permission-actions">
+                <button class="permission-button permission-button-primary" id="quit-button">Quit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('quit-button').addEventListener('click', () => {
+            window.electronAPI.quitApplication();
+        });
+    </script>
+</body>
+</html>

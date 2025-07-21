@@ -5,7 +5,9 @@ vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/mock/app/path'),
     getName: vi.fn(() => 'Codexel'),
-    getVersion: vi.fn(() => '0.2.1')
+    getVersion: vi.fn(() => '0.2.1'),
+    relaunch: vi.fn(),
+    quit: vi.fn()
   },
   ipcMain: {
     handle: vi.fn(),
@@ -20,6 +22,7 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: vi.fn().mockImplementation(() => ({
     loadURL: vi.fn(),
+    loadFile: vi.fn(),
     webContents: {
       send: vi.fn(),
       openDevTools: vi.fn()
@@ -29,11 +32,13 @@ vi.mock('electron', () => ({
     show: vi.fn(),
     hide: vi.fn(),
     close: vi.fn(),
+    focus: vi.fn(),
     isDestroyed: vi.fn(() => false)
   })),
   dialog: {
     showErrorBox: vi.fn(),
-    showMessageBox: vi.fn()
+    showMessageBox: vi.fn(),
+    showMessageBoxSync: vi.fn()
   },
   shell: {
     openExternal: vi.fn()
@@ -45,6 +50,9 @@ vi.mock('electron', () => ({
   },
   desktopCapturer: {
     getSources: vi.fn()
+  },
+  systemPreferences: {
+    getMediaAccessStatus: vi.fn()
   }
 }));
 
