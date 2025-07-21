@@ -12,7 +12,6 @@ export default defineConfig({
       exclude: [
         'node_modules/**',
         'test/**',
-        'pickleglass_web/**',
         'build.js',
         'forge.config.js',
         'vitest.config.js'
