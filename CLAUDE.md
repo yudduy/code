@@ -63,27 +63,20 @@ Everything else (audio capture, Whisper, screen video, scoring engine, replay UI
 
 | Layer                | Path(s)                                          | Notes                                                                          |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| **Electron Main**    | `src/main/main.js`                               | Add `active-win` polling, emit `APP_FOCUS_CHANGED` IPC                         |
-| **Renderer (React)** | `src/features/listen/renderer/listenCapture.js`  | Listen for IPC, queue events                                                   |
-|                      | `src/features/listen/renderer/PromptListener.js` | Detect prompt submits                                                          |
-|                      | `src/features/listen/telemetryBuffer.js`         | Batch & retry uploads                                                          |
-| **Config**           | `src/config/appSignatures.js`                    | Regex map of known apps/chats                                                  |
-| **UI**               | `src/features/listen/ConsentModal.js` etc.       | Consent modal, timer, privacy review                                           |
-| **Backend**          | `supabase/functions/ingest/index.ts`             | Edge Function that validates Firebase JWT & bulk‑inserts events into Postgres  |
-|                      | `supabase/sql/schema.sql`                        | Creates `focus_events`, `prompt_events`, and `sessions` tables with `pgvector` |
-|                      | `supabase/sql/policies.sql`                      | Row‑level security policies                                                    |
-|                      | `supabase/tests/`                                | Vitest suite for the ingest handler                                            |
+| **Electron Main**    | `src/core/main/main.js`                          | Main process entry point with focus detection and IPC                         |
+|                      | `src/core/main/focus/focusDetector.js`           | Active window polling with `active-win`, emits `APP_FOCUS_CHANGED` IPC        |
+|                      | `src/core/main/windows/assessmentWindowManager.js` | Multi-window management with liquid glass effects                            |
+| **Assessment Flow**  | `src/features/assessment/components/`            | Assessment workflow UI components                                               |
+|                      | `src/features/assessment/services/`              | Assessment business logic and state management                                  |
+| **Telemetry System** | `src/features/telemetry/buffer/telemetryBuffer.js` | Event batching, retry logic, and offline handling                           |
+|                      | `src/features/telemetry/collectors/`             | Focus and prompt data collectors                                                |
+| **Config**           | `src/shared/config/appSignatures.js`             | Regex map of known apps/chats (17+ AI development tools)                       |
+| **UI Components**    | `src/features/ui/components/`                     | Reusable UI components with design system                                       |
+|                      | `src/app/*.html`                                  | Window templates (consent, ready, header, completion)                          |
+| **Backend (Stub)**   | External `/ingest` endpoint                       | Supabase edge function for telemetry ingestion                                 |
 
 > **UI & Design Guidance**  ⋯ *(unchanged)*
 
-\----- | ------- | ----- |
-\| **Electron Main** | `src/main/main.js` | Add `active-win` polling, emit `APP_FOCUS_CHANGED` IPC |
-\| **Renderer (React)** | `src/features/listen/renderer/listenCapture.js` | Listen for IPC, queue events |
-\|  | `src/features/listen/renderer/PromptListener.js` | Detect prompt submits |
-\|  | `src/features/listen/telemetryBuffer.js` | Batch & retry uploads |
-\| **Config** | `src/config/appSignatures.js` | Regex map of known apps/chats |
-\| **UI** | `src/features/listen/ConsentModal.js` etc. | Consent modal, timer, privacy review |
-\| **Backend (stub)** | `/ingest` route | Accept event array (outside this repo) |
 
 > **UI & Design Guidance**
 > • All frontend/UI changes must preserve the existing Glass look‑and‑feel.
@@ -168,8 +161,8 @@ type PromptSubmitEvent = { sessionId: string; ts: number; type: 'PROMPT_SUBMIT';
 
 ## 6  Milestones & Acceptance Criteria
 
-| # | Milestone              | Must‑have acceptance tests                                                                  |
-| - | ---------------------- | ------------------------------------------------------------------------------------------- |
+| # | Milestone              | Status      | Must‑have acceptance tests                                                                  |
+| - | ---------------------- | ----------- | ------------------------------------------------------------------------------------------- |
 | 1 | **Interface Detector** | 95 %+ window switches captured in unit test fixture; manual log shows correct appId mapping |
 | 2 | **Prompt Tracker**     | Detect Ctrl+Enter submit in ChatGPT, Enter in Cursor & Claude; unit tests pass              |
 | 3 | **Buffer & Upload**    | Offline → online scenario replays events without loss                                       |

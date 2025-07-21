@@ -31,7 +31,7 @@ global.KeyboardEvent = class KeyboardEvent {
 };
 
 // Import after setting up mocks
-const PromptListener = require('../src/features/listen/renderer/PromptListener');
+const PromptListener = require('../src/features/telemetry/components/PromptListener');
 
 describe('PromptListener', () => {
   let promptListener;

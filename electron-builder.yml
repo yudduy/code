@@ -1,36 +1,30 @@
 # electron-builder.yml
 
 # The unique application ID
-appId: com.pickle.glass
+appId: com.codexel.app
 
 # The user-facing application name
-productName: Glass
+productName: Codexel
 
 # Publish configuration for GitHub releases
 publish:
     provider: github
-    owner: pickle-com
-    repo: glass
+    owner: codexel-dev
+    repo: codexel
     releaseType: draft
 
 # Protocols configuration for deep linking
 protocols:
-    name: PickleGlass Protocol
+    name: Codexel Protocol
     schemes: 
-        - pickleglass
+        - codexel
 
 # List of files to be included in the app package
 files:
     - src/**/*
     - package.json
-    - pickleglass_web/backend_node/**/*
     - '!**/node_modules/electron/**'
     - public/build/**/*
-
-# Additional resources to be copied into the app's resources directory
-extraResources:
-    - from: pickleglass_web/out
-      to: out
 
 asarUnpack:
     - "src/assets/SystemAudioDump"
@@ -55,7 +49,7 @@ nsis:
     deleteAppDataOnUninstall: true
     createDesktopShortcut: always
     createStartMenuShortcut: true
-    shortcutName: Glass
+    shortcutName: Codexel
 
 # macOS specific configuration
 mac:

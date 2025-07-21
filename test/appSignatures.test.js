@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { identifyApp } from '../src/config/appSignatures.js';
+import { identifyApp } from '../src/shared/config/appSignatures.js';
 
 describe('App Signatures - identifyApp', () => {
   describe('AI Tools', () => {
@@ -133,7 +133,7 @@ describe('App Signatures - identifyApp', () => {
   describe('Communication Tools', () => {
     it('should identify Slack', () => {
       const windows = [
-        { title: 'Slack - Pickle Team', owner: { name: 'Slack' } },
+        { title: 'Slack - Codexel Team', owner: { name: 'Slack' } },
         { title: 'Slack', owner: { name: 'Slack' } }
       ];
 

@@ -3,10 +3,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock fetch
 global.fetch = vi.fn();
 
+// Mock Supabase client
+vi.mock('../src/core/services/supabaseClient', () => ({
+  initialize: vi.fn(),
+  sendTelemetryEvents: vi.fn(() => Promise.resolve({ success: true }))
+}));
+
 // Mock navigator
 Object.defineProperty(global, 'navigator', {
   value: {
-    onlineState: true
+    onLine: true
   },
   writable: true
 });
@@ -19,7 +25,8 @@ const mockWindow = {
 global.window = mockWindow;
 
 // Import after setting up mocks
-const TelemetryBuffer = require('../src/features/listen/telemetryBuffer');
+const TelemetryBuffer = require('../src/features/telemetry/services/telemetryBuffer');
+const supabaseClient = require('../src/core/services/supabaseClient');
 
 describe('TelemetryBuffer', () => {
   let buffer;
@@ -35,16 +42,15 @@ describe('TelemetryBuffer', () => {
       maxRetries: 2,
       retryDelay: 500,
       maxQueueSize: 10,
-      endpoint: '/test-ingest'
+      endpoint: '/test-ingest',
+      sessionId: 'test-session-123'
     };
     
     buffer = new TelemetryBuffer(mockConfig);
+    buffer.setSessionId('test-session-123');
     
-    // Mock successful fetch by default
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true })
-    });
+    // Mock successful supabase upload by default
+    supabaseClient.sendTelemetryEvents.mockResolvedValue({ success: true });
   });
 
   afterEach(() => {
@@ -156,11 +162,15 @@ describe('TelemetryBuffer', () => {
       // Wait for async processing
       await vi.runAllTimersAsync();
       
-      expect(global.fetch).toHaveBeenCalledWith('/test-ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.stringContaining('"events"')
-      });
+      expect(supabaseClient.sendTelemetryEvents).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'APP_FOCUS',
+            appId: 'test-app'
+          })
+        ]),
+        'test-session-123'
+      );
       
       expect(buffer.events).toHaveLength(0);
     });
@@ -174,12 +184,12 @@ describe('TelemetryBuffer', () => {
       });
       
       expect(buffer.events).toHaveLength(1);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).not.toHaveBeenCalled();
       
       // Fast-forward time
       await vi.advanceTimersByTimeAsync(mockConfig.maxBatchWaitTime);
       
-      expect(global.fetch).toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).toHaveBeenCalled();
       expect(buffer.events).toHaveLength(0);
     });
 
@@ -196,15 +206,15 @@ describe('TelemetryBuffer', () => {
       
       await vi.runAllTimersAsync();
       
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).not.toHaveBeenCalled();
       expect(buffer.events).toHaveLength(mockConfig.batchSize);
     });
   });
 
   describe('Retry Logic', () => {
     it('should retry failed uploads', async () => {
-      // Make fetch fail
-      global.fetch.mockRejectedValueOnce(new Error('Network error'));
+      // Make supabase upload fail
+      supabaseClient.sendTelemetryEvents.mockRejectedValueOnce(new Error('Network error'));
       
       buffer.addEvent({
         sessionId: 'test',
@@ -231,7 +241,7 @@ describe('TelemetryBuffer', () => {
 
     it('should drop events after max retries', async () => {
       // Make fetch always fail
-      global.fetch.mockRejectedValue(new Error('Persistent error'));
+      supabaseClient.sendTelemetryEvents.mockRejectedValue(new Error('Persistent error'));
       
       buffer.addEvent({
         sessionId: 'test',
@@ -251,7 +261,7 @@ describe('TelemetryBuffer', () => {
     });
 
     it('should use exponential backoff for retries', async () => {
-      global.fetch.mockRejectedValue(new Error('Network error'));
+      supabaseClient.sendTelemetryEvents.mockRejectedValue(new Error('Network error'));
       
       buffer.addEvent({
         sessionId: 'test',
@@ -264,15 +274,15 @@ describe('TelemetryBuffer', () => {
       expect(buffer.failedEvents[0]._retryCount).toBe(1);
       
       // Clear previous calls
-      global.fetch.mockClear();
+      supabaseClient.sendTelemetryEvents.mockClear();
       
       // Advance by base retry delay - should not retry yet
       await vi.advanceTimersByTimeAsync(mockConfig.retryDelay);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).not.toHaveBeenCalled();
       
       // Advance by full exponential backoff delay
       await vi.advanceTimersByTimeAsync(mockConfig.retryDelay);
-      expect(global.fetch).toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).toHaveBeenCalled();
     });
   });
 
@@ -289,7 +299,7 @@ describe('TelemetryBuffer', () => {
       });
       
       // Should not upload when offline
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).not.toHaveBeenCalled();
     });
 
     it('should resume uploads when coming back online', async () => {
@@ -308,7 +318,7 @@ describe('TelemetryBuffer', () => {
       
       await vi.runAllTimersAsync();
       
-      expect(global.fetch).toHaveBeenCalled();
+      expect(supabaseClient.sendTelemetryEvents).toHaveBeenCalled();
       expect(buffer.events).toHaveLength(0);
     });
   });
@@ -351,7 +361,7 @@ describe('TelemetryBuffer', () => {
       
       expect(buffer.events).toHaveLength(0);
       expect(buffer.failedEvents).toHaveLength(0);
-      expect(global.fetch).toHaveBeenCalledTimes(2); // One for main events, one for failed
+      expect(supabaseClient.sendTelemetryEvents).toHaveBeenCalledTimes(2); // One for main events, one for failed
     });
 
     it('should clear all events and timers', () => {
@@ -370,7 +380,7 @@ describe('TelemetryBuffer', () => {
 
   describe('Error Handling', () => {
     it('should handle fetch errors gracefully', async () => {
-      global.fetch.mockRejectedValue(new Error('Network error'));
+      supabaseClient.sendTelemetryEvents.mockRejectedValue(new Error('Network error'));
       
       buffer.addEvent({
         sessionId: 'test',
@@ -386,10 +396,9 @@ describe('TelemetryBuffer', () => {
     });
 
     it('should handle HTTP errors', async () => {
-      global.fetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error'
+      supabaseClient.sendTelemetryEvents.mockResolvedValue({
+        success: false,
+        error: 'Internal Server Error'
       });
       
       buffer.addEvent({

@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/mock/app/path'),
-    getName: vi.fn(() => 'Glass'),
+    getName: vi.fn(() => 'Codexel'),
     getVersion: vi.fn(() => '0.2.1')
   },
   ipcMain: {

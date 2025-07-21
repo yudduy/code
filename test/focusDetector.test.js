@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock active-win module
 vi.mock('active-win', () => ({
-  default: vi.fn()
+  default: vi.fn(() => Promise.resolve({
+    title: 'Test Window',
+    owner: { name: 'TestApp' },
+    url: 'https://example.com'
+  }))
 }));
 
 // Import mocked modules
 const activeWin = await import('active-win');
-const { identifyApp } = await import('../src/config/appSignatures.js');
+const { identifyApp } = await import('../src/shared/config/appSignatures.js');
 
 describe('FocusDetector', () => {
   let focusDetector;
@@ -17,6 +21,7 @@ describe('FocusDetector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     
     // Clear module cache
     vi.resetModules();
@@ -42,14 +47,22 @@ describe('FocusDetector', () => {
       }
     }));
     
+    // Configure activeWin mock
+    activeWin.default.mockResolvedValue({
+      title: 'Test Window - TestApp',
+      owner: { name: 'TestApp' },
+      url: 'https://example.com'
+    });
+    
     // Import focusDetector after mocks are set
-    focusDetector = require('../src/main/focusDetector');
+    focusDetector = require('../src/core/main/focusDetector');
   });
 
   afterEach(() => {
     if (focusDetector) {
       focusDetector.stop();
     }
+    vi.useRealTimers();
     ipcMainHandlers = {};
   });
 
@@ -57,7 +70,9 @@ describe('FocusDetector', () => {
     it('should start polling when start is called', async () => {
       const sessionId = 'test-session-123';
       
-      await focusDetector.start(mockMainWindow, sessionId, 100);
+      const startPromise = focusDetector.start(mockMainWindow, sessionId, 100);
+      await vi.runAllTimersAsync();
+      await startPromise;
       
       expect(focusDetector.isRunning).toBe(true);
       expect(focusDetector.sessionId).toBe(sessionId);
@@ -73,10 +88,15 @@ describe('FocusDetector', () => {
     it('should not start multiple times', async () => {
       const sessionId = 'test-session-123';
       
-      await focusDetector.start(mockMainWindow, sessionId);
+      const startPromise1 = focusDetector.start(mockMainWindow, sessionId);
+      await vi.runAllTimersAsync();
+      await startPromise1;
+      
       const consoleSpy = vi.spyOn(console, 'log');
       
-      await focusDetector.start(mockMainWindow, sessionId);
+      const startPromise2 = focusDetector.start(mockMainWindow, sessionId);
+      await vi.runAllTimersAsync();
+      await startPromise2;
       
       expect(consoleSpy).toHaveBeenCalledWith('FocusDetector already running');
     });
@@ -190,7 +210,7 @@ describe('FocusDetector', () => {
       },
       {
         name: 'Slack app',
-        window: { title: 'Slack - Pickle Team', owner: { name: 'Slack' } },
+        window: { title: 'Slack - Codexel Team', owner: { name: 'Slack' } },
         expected: 'slack'
       },
       {

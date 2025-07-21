@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import PromptListener from '../src/features/listen/renderer/PromptListener.js';
+import PromptListener from '../src/features/telemetry/components/PromptListener.js';
 
 describe('PromptListener Word Counter', () => {
   let promptListener;

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock active-win at the module level
-const mockActiveWin = vi.fn();
+const mockActiveWin = vi.fn(() => Promise.resolve({
+  title: 'Test Window',
+  owner: { name: 'TestApp' },
+  url: 'https://example.com'
+}));
 vi.mock('active-win', () => ({
   default: mockActiveWin
 }));
@@ -14,6 +18,7 @@ describe('FocusDetector Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    vi.useFakeTimers();
     
     // Set test environment
     process.env.NODE_ENV = 'test';
@@ -27,7 +32,7 @@ describe('FocusDetector Integration', () => {
     };
 
     // Import after setting test env
-    const module = require('../src/main/focusDetector');
+    const module = require('../src/core/main/focusDetector');
     focusDetector = module;
     FocusDetectorClass = module.FocusDetector;
   });
@@ -36,6 +41,7 @@ describe('FocusDetector Integration', () => {
     if (focusDetector && focusDetector.stop) {
       focusDetector.stop();
     }
+    vi.useRealTimers();
     delete process.env.NODE_ENV;
   });
 
@@ -100,7 +106,7 @@ describe('FocusDetector Integration', () => {
     const sessionId = 'test-789';
     
     mockActiveWin.mockResolvedValue({
-      title: 'Slack - Pickle Team',
+      title: 'Slack - Codexel Team',
       owner: { name: 'Slack' }
     });
 
@@ -113,7 +119,7 @@ describe('FocusDetector Integration', () => {
     expect(state).toEqual({
       appId: 'slack',
       windowInfo: expect.objectContaining({
-        title: 'Slack - Pickle Team'
+        title: 'Slack - Codexel Team'
       }),
       isRunning: false
     });

@@ -1,12 +1,11 @@
-import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
+import { html, css, LitElement } from '../assets/vendor/lit-core-2.7.4.min.js';
 import { SettingsView } from '../features/settings/SettingsView.js';
-import { AssistantView } from '../features/listen/AssistantView.js';
-import { AskView } from '../features/ask/AskView.js';
-import { ConsentModal } from '../features/listen/ConsentModal.js';
-import { StartAssessment } from '../features/listen/StartAssessment.js';
-import { MainHeader } from './MainHeader.js';
+import { AssistantView } from '../features/telemetry/components/TelemetryView.js';
+import { ConsentModal } from '../features/assessment/components/ConsentModal.js';
+import { StartAssessment } from '../features/assessment/components/StartAssessment.js';
+import { MainHeader } from '../features/ui/components/MainHeader.js';
 
-import '../features/listen/renderer/renderer.js';
+import '../core/renderer/renderer.js';
 
 export class PickleGlassApp extends LitElement {
     static styles = css`
@@ -28,7 +27,7 @@ export class PickleGlassApp extends LitElement {
             height: 100%;
         }
 
-        ask-view, settings-view, history-view, help-view, setup-view {
+        settings-view, history-view, help-view, setup-view {
             display: block;
             width: 100%;
             height: 100%;
@@ -441,7 +440,7 @@ export class PickleGlassApp extends LitElement {
      */
     async startAssessmentTelemetry() {
         // Import and initialize AssessmentTimer
-        const { default: AssessmentTimer } = await import('../features/listen/AssessmentTimer.js');
+        const { default: AssessmentTimer } = await import('../features/assessment/components/AssessmentTimer.js');
         
         this.assessmentTimer = new AssessmentTimer({
             duration: 90 * 60 * 1000, // 90 minutes
@@ -644,9 +643,6 @@ export class PickleGlassApp extends LitElement {
                     .onSendText=${message => this.handleSendText(message)}
                     @response-index-changed=${e => (this.currentResponseIndex = e.detail.index)}
                 ></assistant-view>`;
-                
-            case 'ask':
-                return html`<ask-view></ask-view>`;
                 
             case 'settings':
                 return html`<settings-view

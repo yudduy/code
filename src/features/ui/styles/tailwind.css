@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles for the "Developer Focus" design system */
+@layer base {
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  
+  body {
+    @apply bg-background text-text-primary antialiased;
+  }
+  
+  /* Ensure proper focus visible styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-sm;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ring;
+  }
+}
+
+/* Component layer for reusable patterns */
+@layer components {
+  /* Button variants matching shadcn/ui patterns */
+  .btn-primary {
+    @apply bg-accent text-accent-foreground hover:bg-accent-hover focus-visible:ring-accent/50 transition-colors duration-150;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-border text-text-primary hover:bg-accent/10 hover:border-ring focus-visible:ring-ring/50 transition-colors duration-150;
+  }
+  
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive-hover focus-visible:ring-destructive/50 transition-colors duration-150;
+  }
+  
+  /* Card component */
+  .card {
+    @apply bg-component border border-border rounded-lg shadow-sm;
+  }
+  
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+  }
+  
+  /* Professional status indicators */
+  .status-indicator {
+    @apply flex items-center gap-2 text-13 font-medium;
+  }
+  
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+  
+  /* Professional input styling */
+  .input {
+    @apply bg-component border border-border rounded-md px-3 py-2 text-14 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors;
+  }
+}

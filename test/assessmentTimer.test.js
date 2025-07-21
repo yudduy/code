@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import AssessmentTimer from '../src/features/listen/AssessmentTimer.js';
+import AssessmentTimer from '../src/features/assessment/components/AssessmentTimer.js';
 
 describe('AssessmentTimer', () => {
   let timer;
