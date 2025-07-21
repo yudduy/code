@@ -112,4 +112,14 @@ data/*.db-wal
 # Build output
 out/
 dist/
-build/ 
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+Thumbs.db
+ehthumbs.db 
